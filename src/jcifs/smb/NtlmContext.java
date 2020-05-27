@@ -51,6 +51,7 @@ public class NtlmContext {
         if (doSigning) {
             this.ntlmsspFlags |= NtlmFlags.NTLMSSP_NEGOTIATE_SIGN |
                 NtlmFlags.NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
+                NtlmFlags.NTLMSSP_NEGOTIATE_SEAL |
                 NtlmFlags.NTLMSSP_NEGOTIATE_KEY_EXCH;
         }
         this.workstation = Type1Message.getDefaultWorkstation();

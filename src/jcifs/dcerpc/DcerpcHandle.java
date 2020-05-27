@@ -24,7 +24,6 @@ import java.net.*;
 import java.security.Principal;
 
 import jcifs.smb.NtlmPasswordAuthentication;
-import jcifs.util.Hexdump;
 import jcifs.dcerpc.ndr.NdrBuffer;
 
 public abstract class DcerpcHandle implements DcerpcConstants {
@@ -112,25 +111,36 @@ public abstract class DcerpcHandle implements DcerpcConstants {
     public static DcerpcHandle getHandle(String url,
                 NtlmPasswordAuthentication auth)
                 throws UnknownHostException, MalformedURLException, DcerpcException {
-        if (url.startsWith("ncacn_np:")) {
+        if (url.startsWith("ncacn_ip_tcp:")) {
+            return new DcerpcTcpHandle(url);
+        } else if (url.startsWith("ncacn_np:")) {
             return new DcerpcPipeHandle(url, auth);
         }
         throw new DcerpcException("DCERPC transport not supported: " + url);
     }
 
     public void bind() throws DcerpcException, IOException {
-synchronized (this) {
-        try {
-            state = 1;
-            DcerpcMessage bind = new DcerpcBind(binding, this);
-            sendrecv(bind);
-        } catch (IOException ioe) {
-            state = 0;
-            throw ioe;
+        synchronized (this) {
+            try {
+                state = 1;
+                DcerpcMessage bind = new DcerpcBind(binding, this);
+                sendrecv(bind);
+               } catch (IOException ioe) {
+                state = 0;
+                throw ioe;
+            }
         }
-}
     }
+
+    public void send(DcerpcMessage msg) throws DcerpcException, IOException {
+        sendrecv(msg, false);
+    }
+
     public void sendrecv(DcerpcMessage msg) throws DcerpcException, IOException {
+        sendrecv(msg, true);
+    }
+
+    private void sendrecv(DcerpcMessage msg, boolean recv) throws DcerpcException, IOException {
         byte[] stub, frag;
         NdrBuffer buf, fbuf;
         boolean isLast, isDirect;
@@ -189,6 +199,10 @@ synchronized (this) {
 
                 doSendFragment(stub, off, msg.length, isDirect);
                 off += n;
+            }
+
+            if (!recv) {
+                return;
             }
 
             doReceiveFragment(stub, isDirect);

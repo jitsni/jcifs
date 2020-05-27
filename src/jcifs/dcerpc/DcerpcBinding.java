@@ -23,10 +23,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import jcifs.dcerpc.msrpc.*;
+import jcifs.dcerpc.msrpc.eventing.even6;
 
 public class DcerpcBinding {
 
-    private static HashMap INTERFACES;
+    private static HashMap<String, String> INTERFACES;
 
     static {
         INTERFACES = new HashMap();
@@ -34,6 +35,8 @@ public class DcerpcBinding {
         INTERFACES.put("lsarpc", lsarpc.getSyntax());
         INTERFACES.put("samr", samr.getSyntax());
         INTERFACES.put("netdfs", netdfs.getSyntax());
+        INTERFACES.put("epm", epm.getSyntax());
+        INTERFACES.put("mseven6", even6.getSyntax());
     }
 
     public static void addInterface(String name, String syntax)
@@ -44,7 +47,7 @@ public class DcerpcBinding {
     String proto;
     String server;
     String endpoint = null;
-    HashMap options = null;
+    HashMap<String, Object> options = null;
     UUID uuid = null;
     int major;
     int minor;
@@ -59,21 +62,22 @@ public class DcerpcBinding {
             endpoint = val.toString();
             String lep = endpoint.toLowerCase();
             if (lep.startsWith("\\pipe\\")) {
-                String iface = (String)INTERFACES.get(lep.substring(6));
-                if (iface != null) {
-                    int c, p;
-                    c = iface.indexOf(':');
-                    p = iface.indexOf('.', c + 1);
-                    uuid = new UUID(iface.substring(0, c));
-                    major = Integer.parseInt(iface.substring(c + 1, p));
-                    minor = Integer.parseInt(iface.substring(p + 1));
-                    return;
-                }
+                lep = lep.substring(6);
+            }
+            String iface = INTERFACES.get(lep);
+            if (iface != null) {
+                int c, p;
+                c = iface.indexOf(':');
+                p = iface.indexOf('.', c + 1);
+                uuid = new UUID(iface.substring(0, c));
+                major = Integer.parseInt(iface.substring(c + 1, p));
+                minor = Integer.parseInt(iface.substring(p + 1));
+                return;
             }
             throw new DcerpcException("Bad endpoint: " + endpoint);
         }
         if (options == null)
-            options = new HashMap();
+            options = new HashMap<>();
         options.put(key, val);
     }
     Object getOption(String key) {
@@ -87,7 +91,7 @@ public class DcerpcBinding {
     public String toString() {
         String ret = proto + ":" + server + "[" + endpoint;
         if (options != null) {
-            Iterator iter = options.keySet().iterator();
+            Iterator<String> iter = options.keySet().iterator();
             while (iter.hasNext()) {
                 Object key = iter.next();
                 Object val = options.get(key);

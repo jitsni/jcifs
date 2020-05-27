@@ -1,0 +1,38 @@
+[
+    uuid(e1af8308-5d1f-11c9-91a4-08002b14a0fa),
+    version(3.0),
+    pointer_default(ptr)
+]
+
+interface epm
+{
+    import "../rpc.idl";
+
+    typedef unsigned small unsigned8;
+    typedef unsigned short unsigned16;
+    typedef unsigned long unsigned32;
+    typedef unsigned long error_status_t;
+
+    const long error_status_ok = 0;
+
+    typedef struct {
+        unsigned32 tower_length; [size_is(tower_length)]
+        byte tower_octet_string[];
+    } twr_t;
+
+    /*
+     * EPT_MAP
+     */
+    [idempotent]
+    [op(0x03)]
+    void ept_map(
+        [in] uuid_t *object,
+        [in] twr_t *map_tower,
+        [in, out] policy_handle *entry_handle,
+        [in] unsigned32 max_towers,
+        [out] unsigned32 *num_towers,
+        [out, length_is(*num_towers), size_is(max_towers)] twr_t *towers[],
+        [out] error_status_t *status
+    );
+
+}
