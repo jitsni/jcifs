@@ -7,12 +7,7 @@ import jcifs.dcerpc.msrpc.NtlmSecurityProvider;
 import jcifs.smb.NtlmPasswordAuthentication;
 
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
 
 /*
@@ -43,23 +38,7 @@ public class EventingTest {
         rpcHandle.send(auth3);
 
         String xpath = "*[System[EventID=4624 or EventID=4634]]";
-
-//        even6.EvtRpcRegisterLogQuery logQuery = new even6.EvtRpcRegisterLogQuery(
-//                "Security", xpath, even6.EvtQueryChannelName | even6.EvtReadNewestToOldest);
-//        rpcHandle.sendrecv(logQuery);
-//
-//        even6.EvtRpcQueryNext results = new even6.EvtRpcQueryNext(
-//                logQuery.handle, 5, 1000, 0);
-//        rpcHandle.sendrecv(results);
-//        System.out.println(results);
-
-//        even6.EvtRpcGetChannelList channelList = new even6.EvtRpcGetChannelList(0);
-//        rpcHandle.sendrecv(channelList);
-
         String bookmark = null;
-//                "<BookmarkList>" +
-//                "<Bookmark Channel=\"Security\" RecordId=\"2004\" IsCurrent=\"True\"/>" +
-//                "</BookmarkList>";
         even6.EvtRpcRegisterRemoteSubscription subscription = new even6.EvtRpcRegisterRemoteSubscription(
                 "Security", xpath, bookmark, even6.EvtSubscribeStartAtOldestRecord);
         rpcHandle.sendrecv(subscription);
