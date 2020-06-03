@@ -7,7 +7,7 @@ import jcifs.dcerpc.rpc.policy_handle;
 import java.util.Arrays;
 
 /*
- * midl generated and then some modifications
+ * Initial version is midl generated (and then it is modified a lot)
  *
  * @author Jitendra Kotamraju
  */
@@ -43,58 +43,64 @@ public class even6 {
             _dst.enc_ndr_long(m_error);
             _dst.enc_ndr_long(m_subErr);
             _dst.enc_ndr_long(m_subErrParam);
-
         }
 
         public void decode(NdrBuffer _src) throws NdrException {
             _src.align(4);
-            m_error = (int)_src.dec_ndr_long();
-            m_subErr = (int)_src.dec_ndr_long();
-            m_subErrParam = (int)_src.dec_ndr_long();
+            m_error = _src.dec_ndr_long();
+            m_subErr = _src.dec_ndr_long();
+            m_subErrParam = _src.dec_ndr_long();
+        }
+
+        @Override
+        public String toString() {
+            return "(m_error=" + m_error + ", m_subErr=" + m_subErr + ", m_subErrParam=" + m_subErrParam + ")";
         }
     }
 
+    // 2.2.11 EvtRpcQueryChannelInfo
     public static class EvtRpcQueryChannelInfo extends NdrObject {
         public String name;
         public int status;
 
         public void encode(NdrBuffer _dst) throws NdrException {
             _dst.align(4);
-            _dst.enc_ndr_string(name);
+            _dst.enc_ndr_referent(name, 1);
             _dst.enc_ndr_long(status);
+            if (name != null) {
+                _dst.enc_ndr_string(name);
+            }
         }
 
         public void decode(NdrBuffer _src) throws NdrException {
             _src.align(4);
-            name = _src.dec_ndr_string();
+            int referent = _src.dec_ndr_long();         // name pointer
             status = _src.dec_ndr_long();
+            if (referent != 0) {
+                name = _src.dec_ndr_string();
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "(name=" + name + ", status=" + status + ")";
         }
     }
 
-    public static class EvtRpcRegisterLogQuery extends DcerpcMessage {
+    // 3.1.4.12 EvtRpcRegisterLogQuery (Opnum 5)
+    public static class EvtRpcRegisterLogQuery extends RegisterRequest {
         private final String channelPath;
         private final String query;
         private final int flags;
-        public policy_handle handle;
-        private policy_handle control;
-        private EvtRpcQueryChannelInfo[] queryChannelInfo;
-        private RpcInfo error;
-
-        public int retval;
 
         public int getOpnum() { return 5; }
 
-        public EvtRpcRegisterLogQuery(
-                String channelPath,
-                String query,
-                int flags) {
-
+        public EvtRpcRegisterLogQuery(String channelPath, String query, int flags) {
             this.channelPath = channelPath;
             this.query = query;
             this.flags = flags;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         public void encode_in(NdrBuffer _dst) throws NdrException {
@@ -107,53 +113,14 @@ public class even6 {
         }
 
         public void decode_out(NdrBuffer _src) throws NdrException {
-            handle = new policy_handle();
-            handle.decode(_src);
-
-            control = new policy_handle();
-            control.decode(_src);
-
-            int queryChannelInfoSize = _src.dec_ndr_long();
-return;
-/*
-            queryChannelInfo = new EvtRpcQueryChannelInfo[queryChannelInfoSize];
-            for(int i=0; i < queryChannelInfoSize; i++) {
-                queryChannelInfo[i] = new EvtRpcQueryChannelInfo();
-                queryChannelInfo[i].decode(_src);
-            }
-
-            if (error == null) {
-                error = new RpcInfo();
-            }
-            error.decode(_src);
-
-            */
-
-//            int _queryChannelInfop = _src.dec_ndr_long();
-//            int _queryChannelInfos = _src.dec_ndr_long();
-//            int _queryChannelInfoi = _src.index;
-//            _src.advance(8 * _queryChannelInfos);
-//
-//            if (queryChannelInfo == null) {
-//                if (_queryChannelInfos < 0 || _queryChannelInfos > 0xFFFF)
-//                    throw new NdrException( NdrException.INVALID_CONFORMANCE );
-//                queryChannelInfo = new EvtRpcQueryChannelInfo[_queryChannelInfos];
-//            }
-//            _src = _src.derive(_queryChannelInfoi);
-//            for (int _i = 0; _i < _queryChannelInfos; _i++) {
-//                if (queryChannelInfo[_i] == null) {
-//                    queryChannelInfo[_i] = new EvtRpcQueryChannelInfo();
-//                }
-//                queryChannelInfo[_i].decode(_src);
-//            }
-
+            super.decode_out(_src);
         }
     }
 
+    // 3.1.4.13 EvtRpcQueryNext (Opnum 11)
     public static class EvtRpcQueryNext extends EventResponse {
         public final int timeOutEnd;
         public final int flags;
-        public int retval;
 
         public EvtRpcQueryNext(policy_handle handle, int numRequestedRecords, int timeOutEnd, int flags) {
             super(handle, numRequestedRecords);
@@ -162,7 +129,6 @@ return;
             this.flags = flags;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         public int getOpnum() { return 0x0b; }
@@ -179,19 +145,12 @@ return;
         }
     }
 
-    public static class EvtRpcRegisterRemoteSubscription extends DcerpcMessage {
+    // 3.1.4.8 EvtRpcRegisterRemoteSubscription (Opnum 0)
+    public static class EvtRpcRegisterRemoteSubscription extends RegisterRequest {
         public final String channelPath;
         public final String query;
         public final String bookmarkXml;
         public final int flags;
-
-        public policy_handle handle;
-        public policy_handle control;
-        public int queryChannelInfoSize;
-        public EvtRpcQueryChannelInfo[] queryChannelInfo;
-        public RpcInfo error;
-
-        public int retval;
 
         public EvtRpcRegisterRemoteSubscription(String channelPath, String query, String bookmarkXml, int flags) {
             this.channelPath = channelPath;
@@ -200,11 +159,12 @@ return;
             this.flags = flags;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
+        @Override
         public int getOpnum() { return 0; }
 
+        @Override
         public void encode_in(NdrBuffer _dst) throws NdrException {
             _dst.enc_ndr_referent(channelPath, 1);
             if (channelPath != null) {
@@ -218,45 +178,22 @@ return;
             _dst.enc_ndr_long(flags);
         }
 
+        @Override
         public void decode_out(NdrBuffer _src) throws NdrException {
-            handle = new policy_handle();
-            handle.decode(_src);
-
-            control = new policy_handle();
-            control.decode(_src);
-
-/*
-            queryChannelInfoSize = (int)_src.dec_ndr_long();
-            int _queryChannelInfop = _src.dec_ndr_long();
-            int _queryChannelInfos = _src.dec_ndr_long();
-            int _queryChannelInfoi = _src.index;
-            _src.advance(8 * _queryChannelInfos);
-
-            if (queryChannelInfo == null) {
-                if (_queryChannelInfos < 0 || _queryChannelInfos > 0xFFFF) throw new NdrException( NdrException.INVALID_CONFORMANCE );
-                queryChannelInfo = new EvtRpcQueryChannelInfo[_queryChannelInfos];
-            }
-            _src = _src.derive(_queryChannelInfoi);
-            for (int _i = 0; _i < _queryChannelInfos; _i++) {
-                if (queryChannelInfo[_i] == null) {
-                    queryChannelInfo[_i] = new EvtRpcQueryChannelInfo();
-                }
-                queryChannelInfo[_i].decode(_src);
-            }
-            error.decode(_src); */
+            super.decode_out(_src);
         }
+
     }
 
+    // 3.1.4.9 EvtRpcRemoteSubscriptionNextAsync (Opnum 1)
     public static class EvtRpcRemoteSubscriptionNextAsync extends EventResponse {
         public final int flags;
-        public int retval;
 
         public EvtRpcRemoteSubscriptionNextAsync(policy_handle handle, int numRequestedRecords, int flags) {
             super(handle, numRequestedRecords);
             this.flags = flags;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         @Override
@@ -275,10 +212,10 @@ return;
         }
     }
 
+    // 3.1.4.10 EvtRpcRemoteSubscriptionNext (Opnum 2)
     public static class EvtRpcRemoteSubscriptionNext extends EventResponse {
         public final int timeout;
         public final int flags;
-        public int retval;
 
         public EvtRpcRemoteSubscriptionNext(policy_handle handle, int numRequestedRecords, int timeout, int flags) {
             super(handle, numRequestedRecords);
@@ -286,7 +223,6 @@ return;
             this.flags = flags;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         @Override
@@ -309,14 +245,12 @@ return;
     // 3.1.4.34 EvtRpcClose (Opnum 13)
     public static class EvtRpcClose extends DcerpcMessage {
         private final policy_handle handle;
-        public int errorCode;
-        public int retval;
+        public int retVal = -1;
 
         public EvtRpcClose(policy_handle handle) {
             this.handle = handle;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         public int getOpnum() { return 13; }
@@ -326,21 +260,19 @@ return;
         }
 
         public void decode_out(NdrBuffer _src) throws NdrException {
-            errorCode = _src.dec_ndr_long();
+            retVal = _src.dec_ndr_long();
         }
     }
 
     // 3.1.4.34 EvtRpcCancel (Opnum 14)
     public static class EvtRpcCancel extends DcerpcMessage {
         private final policy_handle control;
-        public int errorCode;
-        public int retval;
+        public int retVal = -1;
 
         public EvtRpcCancel(policy_handle control) {
             this.control = control;
 
             this.ptype = 0;
-            this.retval = -1;
         }
 
         public int getOpnum() { return 14; }
@@ -350,10 +282,54 @@ return;
         }
 
         public void decode_out(NdrBuffer _src) throws NdrException {
-            errorCode = _src.dec_ndr_long();
+            retVal = _src.dec_ndr_long();
         }
     }
 
+    private static abstract class RegisterRequest extends DcerpcMessage {
+        protected policy_handle handle;
+        protected policy_handle control;
+        public int queryChannelInfoSize;
+        public EvtRpcQueryChannelInfo[] queryChannelInfo;
+        public RpcInfo error;
+        public int retVal = -1;
+
+        @Override
+        public void decode_out(NdrBuffer _src) throws NdrException {
+            handle = new policy_handle();
+            handle.decode(_src);
+
+            control = new policy_handle();
+            control.decode(_src);
+
+            queryChannelInfoSize = _src.dec_ndr_long();
+
+            int _queryChannelInfop = _src.dec_ndr_long();           // pointer
+            if (_queryChannelInfop != 0) {
+                int _queryChannelInfos = _src.dec_ndr_long();       // MaxCount
+                if (_queryChannelInfos != queryChannelInfoSize) {
+                    String msg = String.format("queryChannelInfoSize=%d != _queryChannelInfos=%d",
+                            queryChannelInfoSize, _queryChannelInfos);
+                    throw new NdrException(msg);
+                }
+                queryChannelInfo = new EvtRpcQueryChannelInfo[_queryChannelInfos];
+                for (int _i = 0; _i < _queryChannelInfos; _i++) {
+                    queryChannelInfo[_i] = new EvtRpcQueryChannelInfo();
+                    queryChannelInfo[_i].decode(_src);
+                }
+            }
+
+            error = new RpcInfo();
+            error.decode(_src);
+
+            retVal = _src.dec_ndr_long();
+        }
+
+        @Override
+        public String toString() {
+            return "channel info="+ Arrays.toString(queryChannelInfo) + ", error=" + error;
+        }
+    }
 
     private static abstract class EventResponse extends DcerpcMessage {
         protected final policy_handle handle;
@@ -364,7 +340,7 @@ return;
         public int[] eventDataSizes;
         public int resultBufferSize;
         public byte[] resultBuffer;
-        public int errorCode;
+        public int retVal = -1;
 
         EventResponse(policy_handle handle, int numRequestedRecords) {
             this.handle = handle;
@@ -439,7 +415,7 @@ return;
             // TODO following work ?
             // System.arraycopy(_src.getBuffer(), _src.index, resultBuffer, 0, _resultBuffers);
 
-            errorCode = _src.dec_ndr_long();
+            retVal = _src.dec_ndr_long();
         }
 
         @Override
@@ -447,8 +423,7 @@ return;
             return "events = " + numActualRecords +
                     " indices = " + Arrays.toString(eventDataIndices) +
                     " sizes = " + Arrays.toString(eventDataSizes) +
-                    " buffer size = " + resultBufferSize +
-                    " error code = " + errorCode;
+                    " buffer size = " + resultBufferSize;
         }
     }
 
