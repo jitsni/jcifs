@@ -41,6 +41,7 @@ public class EventingTest {
         pushSubscription(rpcHandle);
         // pullSubscription(rpcHandle);
         // query(rpcHandle);
+        // pullSubscriptionWithWait(rpcHandle);
     }
 
     private static void pushSubscription(DcerpcHandle rpcHandle) throws IOException {
@@ -97,7 +98,7 @@ public class EventingTest {
 
         while(true) {
             even6.EvtRpcRemoteSubscriptionNext pull = new even6.EvtRpcRemoteSubscriptionNext(
-                    subscription.handle, 5, timeout, 0);
+                    subscription.handle, numRequestedRecords, timeout, 0);
             rpcHandle.sendrecv(pull);
             assert pull.retVal == 0;
             System.out.println(pull);
@@ -129,7 +130,7 @@ public class EventingTest {
         int numRequestedRecords = 5;
         int pollInterval = 5000;
         while(true) {
-            even6.EvtRpcQueryNext pull = new even6.EvtRpcQueryNext(query.handle, 5, queryTimeout, 0);
+            even6.EvtRpcQueryNext pull = new even6.EvtRpcQueryNext(query.handle, numRequestedRecords, queryTimeout, 0);
             rpcHandle.sendrecv(pull);
             assert pull.retVal == 0;
             System.out.println(pull);
@@ -139,6 +140,45 @@ public class EventingTest {
             }
             if (numRequestedRecords != pull.numActualRecords) {
                 Thread.sleep(pollInterval);
+            }
+        }
+    }
+
+    private static void pullSubscriptionWithWait(DcerpcHandle rpcHandle) throws Exception {
+        String channel = "Security";
+        String xpath = "*[System[EventID=4624 or EventID=4634]]";
+        String bookmark = null;
+
+        even6.EvtRpcRegisterRemoteSubscription subscription = new even6.EvtRpcRegisterRemoteSubscription(
+                channel, xpath, bookmark, even6.EvtSubscribeToFutureEvents | even6.EvtSubscribePull);
+        rpcHandle.sendrecv(subscription);
+
+        assert subscription.retVal == 0;
+        assert subscription.queryChannelInfo[0].name.equals(channel);
+        assert subscription.queryChannelInfo[0].status == 0;
+        assert subscription.error.m_error == 0;
+        assert subscription.error.m_subErr == 0;
+        assert subscription.error.m_subErrParam == 0;
+
+        int timeout = 5000;
+        int numRequestedRecords = 5;
+
+        while(true) {
+            even6.EvtRpcRemoteSubscriptionNext pull = new even6.EvtRpcRemoteSubscriptionNext(
+                    subscription.handle, numRequestedRecords, timeout, 0);
+            rpcHandle.sendrecv(pull);
+            assert pull.retVal == 0;
+
+            System.out.println(pull);
+            for(int i=0; i < pull.numActualRecords; i++) {
+                EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
+                System.out.println("\t" + record);
+            }
+            if (numRequestedRecords != pull.numActualRecords) {
+                even6.EvtRpcRemoteSubscriptionWaitAsync wait = new even6.EvtRpcRemoteSubscriptionWaitAsync(
+                        subscription.handle);
+                rpcHandle.sendrecv(wait);
+                assert wait.retVal == 0;
             }
         }
     }

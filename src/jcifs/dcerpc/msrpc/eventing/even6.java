@@ -242,6 +242,31 @@ public class even6 {
         }
     }
 
+    // 3.1.4.11 EvtRpcRemoteSubscriptionWaitAsync (Opnum 3)
+    public static class EvtRpcRemoteSubscriptionWaitAsync extends DcerpcMessage {
+        private final policy_handle handle;
+        public int retVal = -1;
+
+        public EvtRpcRemoteSubscriptionWaitAsync(policy_handle handle) {
+            this.handle = handle;
+
+            this.ptype = 0;
+        }
+
+        @Override
+        public int getOpnum() { return 3; }
+
+        @Override
+        public void encode_in(NdrBuffer _dst) throws NdrException {
+            handle.encode(_dst);
+        }
+
+        @Override
+        public void decode_out(NdrBuffer _src) throws NdrException {
+            retVal = _src.dec_ndr_long();
+        }
+    }
+
     // 3.1.4.34 EvtRpcClose (Opnum 13)
     public static class EvtRpcClose extends DcerpcMessage {
         private final policy_handle handle;
