@@ -42,11 +42,13 @@ public class DcerpcBind extends DcerpcMessage {
     }
 
     DcerpcBinding binding;
+    DcerpcHandle handle;
     int max_xmit, max_recv;
 
     public DcerpcBind() {
     }
     DcerpcBind(DcerpcBinding binding, DcerpcHandle handle) {
+        this.handle = handle;
         this.binding = binding;
         max_xmit = handle.max_xmit;
         max_recv = handle.max_recv;
@@ -60,7 +62,7 @@ public class DcerpcBind extends DcerpcMessage {
     public void encode_in(NdrBuffer buf) throws NdrException {
         buf.enc_ndr_short(max_xmit);
         buf.enc_ndr_short(max_recv);
-        buf.enc_ndr_long(0); /* assoc. group */
+        buf.enc_ndr_long(handle.assocGroup); /* assoc. group */
         buf.enc_ndr_small(1); /* num context items */
         buf.enc_ndr_small(0); /* reserved */
         buf.enc_ndr_short(0); /* reserved2 */
@@ -76,7 +78,7 @@ public class DcerpcBind extends DcerpcMessage {
     public void decode_out(NdrBuffer buf) throws NdrException {
         buf.dec_ndr_short(); /* max transmit frag size */
         buf.dec_ndr_short(); /* max receive frag size */
-        buf.dec_ndr_long();  /* assoc. group */
+        handle.assocGroup = buf.dec_ndr_long();  /* assoc. group */
         int n = buf.dec_ndr_short(); /* secondary addr len */
         buf.advance(n); /* secondary addr */
         buf.align(4);

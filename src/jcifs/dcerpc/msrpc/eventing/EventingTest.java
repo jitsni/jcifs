@@ -9,6 +9,7 @@ import jcifs.smb.NtlmPasswordAuthentication;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketTimeoutException;
 import java.util.Properties;
 
 /*
@@ -38,10 +39,12 @@ public class EventingTest {
         DcerpcMessage auth3 = new Auth3();
         rpcHandle.send(auth3);
 
-        pushSubscription(rpcHandle);
+        // pushSubscription(rpcHandle);
         // pullSubscription(rpcHandle);
         // query(rpcHandle);
         // pullSubscriptionWithWait(rpcHandle);
+        pullUsingTwoConnections(rpcHandle, hostname, auth);
+
     }
 
     private static void pushSubscription(DcerpcHandle rpcHandle) throws IOException {
@@ -181,6 +184,64 @@ public class EventingTest {
                 assert wait.retVal == 0;
             }
         }
+    }
+
+    private static void pullUsingTwoConnections(DcerpcHandle rpcHandle, String hostname, NtlmPasswordAuthentication auth) throws Exception {
+        String channel = "Security";
+        String xpath = "*[System[EventID=4624 or EventID=4634]]";
+        String bookmark = null;
+
+        even6.EvtRpcRegisterRemoteSubscription subscription = new even6.EvtRpcRegisterRemoteSubscription(
+                channel, xpath, bookmark, even6.EvtSubscribeToFutureEvents | even6.EvtSubscribePull);
+        rpcHandle.sendrecv(subscription);
+
+        assert subscription.retVal == 0;
+        assert subscription.queryChannelInfo[0].name.equals(channel);
+        assert subscription.queryChannelInfo[0].status == 0;
+        assert subscription.error.m_error == 0;
+        assert subscription.error.m_subErr == 0;
+        assert subscription.error.m_subErrParam == 0;
+
+        int timeout = 5000;
+        int numRequestedRecords = 5;
+
+        DcerpcHandle waitHandle = null;
+
+        while (true) {
+            while (true) {
+                if (waitHandle == null) {
+                    waitHandle = DcerpcHandle.getHandle("ncacn_ip_tcp:" + hostname + "[mseven6]", auth);
+                    waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth));
+                    waitHandle.setAssocGroup(rpcHandle.getAssocGroup());           // Associates TCP connections
+                    waitHandle.bind();
+                    DcerpcMessage auth3 = new Auth3();
+                    waitHandle.send(auth3);
+                }
+
+                even6.EvtRpcRemoteSubscriptionWaitAsync wait = new even6.EvtRpcRemoteSubscriptionWaitAsync(
+                        subscription.handle);
+                try {
+                    waitHandle.sendrecv(wait);
+                    assert wait.retVal == 0;
+                    break;
+                } catch (SocketTimeoutException se) {
+                    waitHandle.close();
+                    waitHandle = null;
+                }
+            }
+
+
+            even6.EvtRpcRemoteSubscriptionNext pull = new even6.EvtRpcRemoteSubscriptionNext(
+                    subscription.handle, numRequestedRecords, timeout, 0);
+            rpcHandle.sendrecv(pull);
+
+            System.out.println(pull);
+            for(int i=0; i < pull.numActualRecords; i++) {
+                EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
+                System.out.println("\t" + record);
+            }
+        }
+
     }
 
 }
