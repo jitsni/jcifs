@@ -107,6 +107,7 @@ public abstract class DcerpcHandle implements DcerpcConstants {
     protected int state = 0;
     protected DcerpcSecurityProvider securityProvider = null;
     private static int call_id = 1;
+    protected int assocGroup = 0;
 
     public static DcerpcHandle getHandle(String url,
                 NtlmPasswordAuthentication auth)
@@ -262,6 +263,14 @@ public abstract class DcerpcHandle implements DcerpcConstants {
 
         if ((de = msg.getResult()) != null)
             throw de;
+    }
+
+    public void setAssocGroup(int assocGroup) {
+        this.assocGroup = assocGroup;
+    }
+
+    public int getAssocGroup() {
+        return assocGroup;
     }
 
     public void setDcerpcSecurityProvider(DcerpcSecurityProvider securityProvider)

@@ -36,7 +36,7 @@ public class DcerpcBinding {
         INTERFACES.put("samr", samr.getSyntax());
         INTERFACES.put("netdfs", netdfs.getSyntax());
         INTERFACES.put("epm", epm.getSyntax());
-        INTERFACES.put("mseven6", even6.getSyntax());
+        INTERFACES.put("even6", even6.getSyntax());
     }
 
     public static void addInterface(String name, String syntax)

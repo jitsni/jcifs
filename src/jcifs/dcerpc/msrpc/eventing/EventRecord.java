@@ -7,7 +7,9 @@ import jcifs.util.Encdec;
  *
  * @author Jitendra Kotamraju
  */
-class EventRecord {
+public class EventRecord {
+    final Exception exception;
+
     final int totalSize;
     final int headerSize;
     final int eventOffset;
@@ -33,6 +35,25 @@ class EventRecord {
         bookmarkSize = Encdec.dec_uint32le(buf, offset + bookmarkOffset);
         recordIdsOffset = Encdec.dec_uint32le(buf, offset + bookmarkOffset + 20);
         recordId = Encdec.dec_uint64le(buf, offset + bookmarkOffset + recordIdsOffset);
+
+        exception = null;
+    }
+
+    EventRecord(Exception exception) {
+        this.exception = exception;
+
+        this.buf = null;
+        this.offset = 0;
+        this.length = 0;
+
+        totalSize = 0;
+        headerSize = 0;
+        eventOffset = 0;
+        bookmarkOffset = 0;
+        binXmlSize = 0;
+        bookmarkSize = 0;
+        recordIdsOffset = 0;
+        recordId = 0;
     }
 
     int binXmlOffset() {
@@ -41,6 +62,6 @@ class EventRecord {
 
     @Override
     public String toString() {
-        return "[recordId=" + recordId + " binXmlSize=" + binXmlSize + "]";
+        return exception != null ? exception.toString() : "[recordId=" + recordId + " binXmlSize=" + binXmlSize + "]";
     }
 }

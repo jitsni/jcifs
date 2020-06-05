@@ -18,26 +18,40 @@ public class DcerpcTcpHandle extends DcerpcHandle {
     private static final Logger LOGGER = Logger.getLogger(DcerpcTcpHandle.class.getName());
 
     private static final int DEFAULT_SO_TIMEOUT = 60000;
-    private static final int DEFAULT_CONN_TIMEOUT = 60000;
+    private static final int DEFAULT_CONN_TIMEOUT = 20000;
 
-    private int port;
+    private int port = -1;
     private Socket socket;
     private OutputStream out;
     private InputStream in;
+    private int soTimeout = -1;
+    private int connectTimeout = -1;
 
     public DcerpcTcpHandle(String url) throws DcerpcException {
         this.binding = DcerpcHandle.parseBinding(url);
     }
 
-    private DcerpcTcpHandle(String server, int port, String endpoint) throws DcerpcException {
+    public DcerpcTcpHandle(String server, int port, String endpoint) throws DcerpcException {
         this.binding = new DcerpcBinding("ncacn_ip_tcp", server);
         this.port = port;
         this.binding.setOption("endpoint", endpoint);
     }
 
+    public int getPort() {
+        return port;
+    }
+
+    public void setConnectTimeout(int timeout) {
+        this.connectTimeout = timeout;
+    }
+
+    public void setSoTimeout(int timeout) {
+        this.soTimeout = timeout;
+    }
+
     @Override
     public void bind() throws IOException {
-        if (port != 135) {
+        if (port == -1) {
             DcerpcTcpHandle ehandle = new DcerpcTcpHandle(binding.server, 135, "epm");
             ehandle.bind();
             EpmMap rpc = new EpmMap(binding.uuid, binding.major);
@@ -52,8 +66,8 @@ public class DcerpcTcpHandle extends DcerpcHandle {
             InetAddress iaddr = InetAddress.getByName(binding.server);
             InetSocketAddress sockaddr = new InetSocketAddress(iaddr, port);
             socket = new Socket();
-            socket.connect(sockaddr, DEFAULT_CONN_TIMEOUT);
-            socket.setSoTimeout(DEFAULT_SO_TIMEOUT);
+            socket.connect(sockaddr, connectTimeout == -1 ? DEFAULT_CONN_TIMEOUT : connectTimeout);
+            socket.setSoTimeout(soTimeout == -1 ? DEFAULT_SO_TIMEOUT : soTimeout);
             socket.setKeepAlive(true);
             out = socket.getOutputStream();
             in = socket.getInputStream();
@@ -85,6 +99,8 @@ public class DcerpcTcpHandle extends DcerpcHandle {
 
     @Override
     protected void doReceiveFragment(byte[] buf, boolean isDirect) throws IOException {
+        socket.setSoTimeout(soTimeout == -1 ? DEFAULT_SO_TIMEOUT : soTimeout);
+
         if (buf.length < max_recv) {
             throw new IllegalArgumentException("buffer too small");
         }
