@@ -15,7 +15,7 @@ import java.util.Properties;
 /*
  * @author Jitendra Kotamraju
  */
-public class EventingTest {
+public class Even6Test {
 
     public static void main(String... args) throws Exception {
         if (args.length != 1) {

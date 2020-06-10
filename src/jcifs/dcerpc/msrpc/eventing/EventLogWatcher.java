@@ -110,7 +110,8 @@ public class EventLogWatcher implements Closeable {
             }
         } catch (Exception e) {
             if (!closed) {
-                eventCallback.onEntryWritten(new EventRecord(e));
+                EventLogException ee = e instanceof EventLogException ? (EventLogException) e : new EventLogException(e);
+                eventCallback.onEntryWritten(new EventRecord(ee));
             }
         }
     }

@@ -4,7 +4,9 @@ import jcifs.dcerpc.msrpc.eventing.EventLogQuery.PathType;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.time.LocalTime;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /*
  * @author Jitendra Kotamraju
@@ -31,14 +33,17 @@ public class EventLogWatcherTest {
         String xpath = "*[System[EventID=4624 or EventID=4634]]";
         EventLogQuery query = new EventLogQuery("Security", PathType.LogName, xpath, session, false);
 
-        EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::eventWritten);
-        watcher.start();
-        Thread.sleep(60000);
-        watcher.close();
+        try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::eventWritten)) {
+            watcher.start();
+            TimeUnit.MINUTES.sleep(2);
+        }
     }
 
     private static void eventWritten(EventRecord record) {
-        System.out.println("Received event = " + record);
+        if (record.exception != null) {
+            throw record.exception;
+        }
+        System.out.println(LocalTime.now() + " Received event = " + record);
     }
 
 }

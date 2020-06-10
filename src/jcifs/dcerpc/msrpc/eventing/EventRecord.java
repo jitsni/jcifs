@@ -8,7 +8,7 @@ import jcifs.util.Encdec;
  * @author Jitendra Kotamraju
  */
 public class EventRecord {
-    final Exception exception;
+    final EventLogException exception;
 
     final int totalSize;
     final int headerSize;
@@ -39,7 +39,7 @@ public class EventRecord {
         exception = null;
     }
 
-    EventRecord(Exception exception) {
+    EventRecord(EventLogException exception) {
         this.exception = exception;
 
         this.buf = null;
