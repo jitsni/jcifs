@@ -78,7 +78,8 @@ public class EventLogSession implements Closeable {
         }
     }
 
-    void sendPull(DcerpcMessage msg, int timeout) throws IOException {
+    // synchronized since two threads: EventLogWatcher thread and close's caller thread
+    synchronized void sendPull(DcerpcMessage msg, int timeout) throws IOException {
         if (pullHandle == null) {
             establishPullConnection();
         }

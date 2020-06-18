@@ -18,8 +18,8 @@ import static jcifs.dcerpc.msrpc.eventing.even6.*;
  */
 public class EventLogWatcher implements Closeable {
     private static final AtomicInteger threadNo = new AtomicInteger();
-    private static final int PULL_TIMEOUT = 60000;               // socket read timeout for fetching event messages
-    private static final int WAIT_TIMEOUT = 2 * 60 * 1000;      // socket read timeout for waitAsync message
+    private static final int PULL_TIMEOUT = 15000;               // socket read timeout for fetching event messages
+    private static final int WAIT_TIMEOUT = 2 * 60 * 1000;       // socket read timeout for waitAsync message
     private static final int REQUESTED_RECORDS = 5;
 
     private final EventLogQuery query;
@@ -90,22 +90,24 @@ public class EventLogWatcher implements Closeable {
                 if (recvRecords != REQUESTED_RECORDS) {
                     EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
                     query.session.sendWait(wait, WAIT_TIMEOUT);
-                    if (wait.retVal != 0) {
+                    if (!closed && wait.retVal != 0) {
                         throw new EventLogException("EvtRpcRemoteSubscriptionWaitAsync return value = " + wait.retVal);
                     }
                 }
 
-                EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
-                        subscription.handle, REQUESTED_RECORDS, PULL_TIMEOUT, 0);
-                query.session.sendPull(pull, PULL_TIMEOUT + 1000);
-                if (pull.retVal != 0) {
-                    throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal);
-                }
-                recvRecords = pull.numActualRecords;
+                if (!closed) {
+                    EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
+                            subscription.handle, REQUESTED_RECORDS, PULL_TIMEOUT, 0);
+                    query.session.sendPull(pull, PULL_TIMEOUT + 1000);
+                    if (pull.retVal != 0) {
+                        throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal);
+                    }
+                    recvRecords = pull.numActualRecords;
 
-                for (int i = 0; i < pull.numActualRecords; i++) {
-                    EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
-                    eventCallback.onEntryWritten(record);
+                    for (int i = 0; i < pull.numActualRecords; i++) {
+                        EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
+                        eventCallback.onEntryWritten(record);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -131,8 +133,33 @@ public class EventLogWatcher implements Closeable {
 
     @Override
     public void close() {
-        closed = true;
-        query.session.close();
+        if (!closed) {
+            closed = true;
+
+            // Cancel any pending EvtRpcRemoteSubscriptionWaitAsync or EvtRpcRemoteSubscriptionNext request
+            EvtRpcCancel cancel = new EvtRpcCancel(subscription.control);
+            try {
+                query.session.sendPull(cancel, PULL_TIMEOUT);
+            } catch (IOException ioe) {
+                // ignore
+            }
+
+            // Close handles
+            EvtRpcClose pull = new EvtRpcClose(subscription.handle);
+            try {
+                query.session.sendPull(pull, PULL_TIMEOUT);
+            } catch (IOException ioe) {
+                // ignore
+            }
+            EvtRpcClose wait = new EvtRpcClose(subscription.control);
+            try {
+                query.session.sendPull(wait, PULL_TIMEOUT);
+            } catch (IOException ioe) {
+                // ignore
+            }
+
+            query.session.close();
+        }
     }
 
 }

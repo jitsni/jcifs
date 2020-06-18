@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class EventLogWatcherTest {
 
+    private static volatile Exception exception;
+
     public static void main(String... args) throws Exception {
         if (args.length != 1) {
             System.out.println("java EventingTest properties-file");
@@ -35,13 +37,20 @@ public class EventLogWatcherTest {
 
         try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::eventWritten)) {
             watcher.start();
-            TimeUnit.MINUTES.sleep(2);
+            while (true) {
+                if (exception != null) {
+                    throw exception;
+                } else {
+                    TimeUnit.SECONDS.sleep(5);
+                }
+            }
         }
     }
 
     private static void eventWritten(EventRecord record) {
         if (record.exception != null) {
-            throw record.exception;
+            exception = record.exception;
+            return;
         }
         System.out.println(LocalTime.now() + " Received event = " + record);
     }
