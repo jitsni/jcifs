@@ -37,6 +37,7 @@ public class EventLogWatcher implements Closeable {
      * the criteria expressed in the query, then the EventRecordWritten event is raised.
      *
      * @param query a query for the event subscription
+     * @param eventCallback a callback to receive matched event
      */
     public EventLogWatcher(EventLogQuery query, EventLogRecordWritten eventCallback) {
         this(query, null, false, eventCallback);
@@ -51,12 +52,23 @@ public class EventLogWatcher implements Closeable {
      *
      * @param query a query for the event subscription
      * @param bookmark a starting position in the event log
+     * @param eventCallback a callback to receive matched event
      */
     public EventLogWatcher(EventLogQuery query, String bookmark, EventLogRecordWritten eventCallback) {
         this(query, bookmark, false, eventCallback);
     }
 
-    private EventLogWatcher(EventLogQuery query, String bookmark, boolean readExistingEvents,
+    /**
+     * Initializes a new instance of the EventLogWatcher class by specifying an event query,
+     * a bookmark that is used as starting position for the query, and a Boolean value that
+     * determines whether to read the events that already exist in the event log.
+     *
+     * @param query a query for the event subscription
+     * @param bookmark a starting position in the event log
+     * @param readExistingEvents whether to read the events that already exist in the event log
+     * @param eventCallback a callback to receive matched event
+     */
+    public EventLogWatcher(EventLogQuery query, String bookmark, boolean readExistingEvents,
             EventLogRecordWritten eventCallback) {
         if (bookmark != null) {
             if (query.reverseDirection) {
