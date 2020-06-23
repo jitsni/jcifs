@@ -34,7 +34,7 @@ public class Even6Test {
 
         NtlmPasswordAuthentication auth = new NtlmPasswordAuthentication(domain, user, password);
         DcerpcHandle rpcHandle = DcerpcHandle.getHandle("ncacn_ip_tcp:" + hostname +"[even6]", auth);
-        rpcHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth));
+        rpcHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, false));
         rpcHandle.bind();
 
         DcerpcMessage auth3 = new Auth3();
@@ -213,7 +213,7 @@ public class Even6Test {
             while (true) {
                 if (waitHandle == null) {
                     waitHandle = DcerpcHandle.getHandle("ncacn_ip_tcp:" + hostname + "[mseven6]", auth);
-                    waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth));
+                    waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, false));
                     waitHandle.setAssocGroup(rpcHandle.getAssocGroup());           // Associates TCP connections
                     waitHandle.bind();
                     DcerpcMessage auth3 = new Auth3();

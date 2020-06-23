@@ -1,5 +1,6 @@
 package jcifs.dcerpc.msrpc;
 
+import jcifs.dcerpc.DcerpcException;
 import jcifs.util.Encdec;
 import jcifs.util.HMACT64;
 import jcifs.util.RC4;
@@ -8,6 +9,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /*
+ * NTLM2 Session Security as per
+ * http://davenport.sourceforge.net/ntlm.html#ntlm2SessionSecurity
+ *
  * @author Jitendra Kotamraju
  */
 class NtlmSessionSecurity {
@@ -21,11 +25,14 @@ class NtlmSessionSecurity {
             "session key to server-to-client sealing key magic constant\u0000".getBytes();
 
     private final boolean keyExch;
-    private final byte[] signingKey;
-    private final byte[] sealingKey;
-    private final RC4 rc4;
 
-    private int sequenceNumber = 0;
+    private final byte[] clientSigningKey;
+    private final RC4 clientSealingHandle;
+    private int clientSequence = 0;
+
+    private final byte[] serverSigningKey;
+    private final RC4 serverSealingHandle;
+    private int serverSequence = 0;
 
     private static byte[] computeKey(byte[] sessionKey, byte[] constant) throws NoSuchAlgorithmException {
         MessageDigest md5 = MessageDigest.getInstance("MD5");
@@ -34,24 +41,26 @@ class NtlmSessionSecurity {
         return md5.digest();
     }
 
-    NtlmSessionSecurity(byte[] sessionKey, boolean isClientToServer, boolean keyExch) {
+    NtlmSessionSecurity(byte[] sessionKey, boolean keyExch) throws DcerpcException {
         this.keyExch = keyExch;
 
         try {
-            signingKey = computeKey(sessionKey,
-                    isClientToServer ? CLIENT_TO_SERVER_SIGNING : SERVER_TO_CLIENT_SIGNING);
-            sealingKey = computeKey(sessionKey,
-                    isClientToServer ? CLIENT_TO_SERVER_SEALING : SERVER_TO_CLIENT_SEALING);
-            rc4 = new RC4(sealingKey);
+            clientSigningKey = computeKey(sessionKey, CLIENT_TO_SERVER_SIGNING);
+            byte[] clientSealingKey = computeKey(sessionKey, CLIENT_TO_SERVER_SEALING);
+            clientSealingHandle = new RC4(clientSealingKey);
+
+            serverSigningKey = computeKey(sessionKey, SERVER_TO_CLIENT_SIGNING);
+            byte[] serverSealingKey = computeKey(sessionKey, SERVER_TO_CLIENT_SEALING);
+            serverSealingHandle = new RC4(serverSealingKey);
         } catch (NoSuchAlgorithmException ne) {
-            throw new RuntimeException("Failed to compute NTLM signing and sealing keys", ne);
+            throw new DcerpcException("Failed to compute NTLM signing and sealing keys", ne);
         }
     }
 
-    private byte[] computeSignature(byte[] data, int off, int len) {
+    private static byte[] computeSignature(byte[] signingKey, int sequence, byte[] data, int off, int len) {
         byte[] signature = new byte[16];
         Encdec.enc_uint32le(1, signature, 0);
-        Encdec.enc_uint32le(sequenceNumber, signature, 12);
+        Encdec.enc_uint32le(sequence, signature, 12);
         HMACT64 hmac = new HMACT64(signingKey);
         hmac.update(signature, 12, 4);
         hmac.update(data, off, len);
@@ -64,16 +73,16 @@ class NtlmSessionSecurity {
      * sign would sign header + body + sec_trailer
      */
     void sign(byte[] buf, int off, int len) {
-        byte[] signature = computeSignature(buf, off, len - 16);   // except auth_data
+        byte[] signature = computeSignature(clientSigningKey, clientSequence, buf, off, len - 16);   // except auth_data
 
         if (keyExch) {
-            rc4.update(signature, 4, 8, signature, 4);
+            clientSealingHandle.update(signature, 4, 8, signature, 4);
         }
 
         // copy signature into auth_data
-        System.arraycopy(signature, 0, buf, len - 16, signature.length);
+        System.arraycopy(signature, 0, buf, off + len - 16, signature.length);
 
-        ++sequenceNumber;
+        ++clientSequence;
     }
 
     /*
@@ -82,36 +91,63 @@ class NtlmSessionSecurity {
      * sign would sign header + body + sec_trailer
      */
     void seal(byte[] buf, int off, int len) {
-        byte[] signature = computeSignature(buf, off, len - 16);   // except auth_data
+        byte[] signature = computeSignature(clientSigningKey, clientSequence, buf, off, len - 16);   // except auth_data
 
         // encrypt only body (in place)
-        rc4.update(buf, off + 24, len - 24 - 8 - 16, buf, off + 24);
+        clientSealingHandle.update(buf, off + 24, len - 24 - 8 - 16, buf, off + 24);
 
         if (keyExch) {
-            rc4.update(signature, 4, 8, signature, 4);
+            clientSealingHandle.update(signature, 4, 8, signature, 4);
         }
 
         // copy signature into auth_data
-        System.arraycopy(signature, 0, buf, len - 16, signature.length);
+        System.arraycopy(signature, 0, buf, off + len - 16, signature.length);
 
-        ++sequenceNumber;
+        ++clientSequence;
     }
 
-    void verifySign(byte[] buf, int off, int len) {
-//        byte[] signature = new byte[16];
-//        System.arraycopy(buf, len - 16, signature, 0, 16);
-//
-//        byte[] signatureExpected = computeSignature(buf, off, len - 16);   // except auth_data
-//
-//        if (keyExch) {
-//            rc4.update(signatureExpected, 4, 8, signatureExpected, 4);
-//        }
-//
-//        if (!Arrays.equals(signatureExpected, signature)) {
-//            throw new RuntimeException("Signature doesn't match");
-//        }
-//
-//        ++sequenceNumber;
+    void verifySign(byte[] buf, int off, int len) throws DcerpcException {
+        if (keyExch) {
+            serverSealingHandle.update(buf, off + len - 16 + 4, 8, buf, off + len - 16 + 4);
+        }
+
+        // verify signature
+        byte[] signature = computeSignature(serverSigningKey, serverSequence, buf, off, len - 16);   // except auth_data
+        if (!equals(signature, 0, buf, len - 16, 16)) {
+            throw new DcerpcException("NTLM Signature mismatch for received msg");
+        }
+
+        ++serverSequence;
+    }
+
+    /*
+     * buf - entire packet (header + body + sec_trailer + auth_data)
+     * unseal would seal only body
+     */
+    void unseal(byte[] buf, int off, int len) throws DcerpcException {
+        // decrypt only body (in place)
+        serverSealingHandle.update(buf, off + 24, len - 24 - 8 - 16, buf, off + 24);
+
+        if (keyExch) {
+            serverSealingHandle.update(buf, off + len - 16 + 4, 8, buf, off + len - 16 + 4);
+        }
+
+        // verify signature
+        byte[] signature = computeSignature(serverSigningKey, serverSequence, buf, off, len - 16);   // except auth_data
+        if (!equals(signature, 0, buf, off + len - 16, 16)) {
+            throw new DcerpcException("NTLM Signature mismatch for received msg");
+        }
+
+        ++serverSequence;
+    }
+
+    private boolean equals(byte[] a, int aFromIndex, byte[] b, int bFromIndex, int length) {
+        for (int i=0; i < length; i++) {
+            if (a[aFromIndex + i] != b[bFromIndex + i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

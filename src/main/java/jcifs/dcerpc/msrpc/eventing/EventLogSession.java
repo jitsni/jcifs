@@ -18,6 +18,7 @@ import java.net.SocketTimeoutException;
  */
 public class EventLogSession implements Closeable {
     private final String server;
+    private final boolean encrypted;
     private final NtlmPasswordAuthentication auth;
 
     private DcerpcTcpHandle pullHandle;
@@ -34,14 +35,31 @@ public class EventLogSession implements Closeable {
      * @param password the password used to connect to the remote computer
      */
     public EventLogSession(String server, String domain, String user, String password) {
+        this(server, domain, user, password, true);
+    }
+
+    /**
+     * Initializes a new EventLogSession object, and establishes a connection with the Event Log
+     * service on the specified computer. The specified credentials (user name and password)
+     * are used for the credentials to access the remote computer
+     *
+     * @param server the name of the computer on which to connect to the Event Log service
+     * @param domain the domain of the specified user
+     * @param user the user name used to connect to the remote computer
+     * @param password the password used to connect to the remote computer
+     * @param encrypted true if transferred data is to be encrypted
+     *                  false if transferred data is not to be encrypted (but only integrity)
+     */
+    public EventLogSession(String server, String domain, String user, String password, boolean encrypted) {
         this.server = server;
+        this.encrypted = encrypted;
 
         auth = new NtlmPasswordAuthentication(domain, user, password);
     }
 
     void establishPullConnection() throws IOException {
         pullHandle = (DcerpcTcpHandle) DcerpcHandle.getHandle("ncacn_ip_tcp:" + server +"[even6]", auth);
-        pullHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth));
+        pullHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         pullHandle.bind();
         DcerpcMessage auth3 = new Auth3();
         pullHandle.send(auth3);
@@ -50,7 +68,7 @@ public class EventLogSession implements Closeable {
     void establishWaitConnection() throws IOException {
         int port = pullHandle.getPort();
         waitHandle = new DcerpcTcpHandle(server, port, "even6");
-        waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth));
+        waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         waitHandle.setAssocGroup(pullHandle.getAssocGroup());   // associate pull and wait connections
         waitHandle.bind();
         DcerpcMessage auth3 = new Auth3();

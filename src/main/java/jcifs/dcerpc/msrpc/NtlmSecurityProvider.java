@@ -27,11 +27,12 @@ public class NtlmSecurityProvider implements DcerpcSecurityProvider {
     private byte[] type3;
 
     private final NtlmContext ntlmContext;
+    private final boolean privacy;
     private NtlmSessionSecurity sessionSecurity;
-    private boolean privacy;
 
-    public NtlmSecurityProvider(NtlmPasswordAuthentication auth) {
+    public NtlmSecurityProvider(NtlmPasswordAuthentication auth, boolean privacy) {
         ntlmContext = new NtlmContext(auth, true);
+        this.privacy = privacy;
     }
 
     // secures BIND, AUTH3, REQUEST messages
@@ -97,10 +98,10 @@ public class NtlmSecurityProvider implements DcerpcSecurityProvider {
                 byte[] token = new byte[auth_length];
                 System.arraycopy(incoming.getBuffer(), frag_length + 8, token, 0, auth_length); // Type2Message
                 type3 = ntlmContext.initSecContext(token, 0, token.length);
-                sessionSecurity = new NtlmSessionSecurity(ntlmContext.getSigningKey(), true, true);
+                sessionSecurity = new NtlmSessionSecurity(ntlmContext.getSigningKey(), true);
             } else if (ptype == MSRPC_RESPONSE) {
                 if (privacy) {
-                    throw new UnsupportedOperationException("TODO");
+                    sessionSecurity.unseal(incoming.getBuffer(), 0, incoming.getLength());
                 } else {
                     sessionSecurity.verifySign(incoming.getBuffer(), 0, incoming.getLength());
                 }
