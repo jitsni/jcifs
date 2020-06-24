@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static jcifs.dcerpc.msrpc.eventing.even6.*;
 
-/*
+/**
  * Allows to subscribe to incoming events. Each time a desired event is published to an event log,
  * the EventRecordWritten event is raised, and the method that handles this event will be executed.
  *
@@ -95,37 +95,46 @@ public class EventLogWatcher implements Closeable {
     }
 
     private void run() {
-        int recvRecords = 0;
-
         try {
             while (!closed) {
-                if (recvRecords != REQUESTED_RECORDS) {
-                    EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
-                    query.session.sendWait(wait, WAIT_TIMEOUT);
-                    if (!closed && wait.retVal != 0) {
-                        throw new EventLogException("EvtRpcRemoteSubscriptionWaitAsync return value = " + wait.retVal);
-                    }
+                EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
+                query.session.sendWait(wait, WAIT_TIMEOUT);
+                if (!closed && wait.retVal != 0) {
+                    throw new EventLogException("EvtRpcRemoteSubscriptionWaitAsync return value = " + wait.retVal);
                 }
-
-                if (!closed) {
-                    EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
-                            subscription.handle, REQUESTED_RECORDS, PULL_TIMEOUT, 0);
-                    query.session.sendPull(pull, PULL_TIMEOUT + 1000);
-                    if (pull.retVal != 0) {
-                        throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal);
-                    }
-                    recvRecords = pull.numActualRecords;
-
-                    for (int i = 0; i < pull.numActualRecords; i++) {
-                        EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
-                        eventCallback.onEntryWritten(record);
-                    }
-                }
+                pullEvents();
             }
         } catch (Exception e) {
             if (!closed) {
                 EventLogException ee = e instanceof EventLogException ? (EventLogException) e : new EventLogException(e);
                 eventCallback.onEntryWritten(new EventRecord(ee));
+            }
+        }
+    }
+
+    /*
+     * pull loop is triggered by
+     *     1. EvtRpcRemoteSubscriptionWaitAsync unblocks when there are new events
+     *     2. TODO (may be a periodic timer). Even if wait async TCP connection is stuck,
+     *        the events can still be pulled (though less frequently). Also, we can increase
+     *        wait async timeout, that means less teardowns when there are no events
+     *        within socket read timeout peroid.
+     */
+    private void pullEvents() throws IOException {
+        int recvRecords = REQUESTED_RECORDS;
+
+        while (!closed && recvRecords == REQUESTED_RECORDS) {
+            EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
+                    subscription.handle, REQUESTED_RECORDS, PULL_TIMEOUT, 0);
+            query.session.sendPull(pull, PULL_TIMEOUT + 1000);
+            if (pull.retVal != 0) {
+                throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal);
+            }
+            recvRecords = pull.numActualRecords;
+
+            for (int i = 0; i < pull.numActualRecords; i++) {
+                EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
+                eventCallback.onEntryWritten(record);
             }
         }
     }
