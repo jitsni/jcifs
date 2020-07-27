@@ -68,7 +68,7 @@ public class LogonEvent extends Event {
         logonProcessId = eventData.get("ProcessId");
         processName = eventData.get("ProcessName");
         ipAddress = eventData.get("IpAddress");
-        ipPort = Integer.parseInt(eventData.getOrDefault("IpPort", "-1"));
+        ipPort = parseInt(eventData.getOrDefault("IpPort", "-1"));
         impersonationLevel = eventData.get("ImpersonationLevel");
         restrictedAdminMode = eventData.get("RestrictedAdminMode");
         targetOutboundUserName = eventData.get("TargetOutboundUserName");
@@ -76,6 +76,14 @@ public class LogonEvent extends Event {
         virtualAccount = eventData.get("VirtualAccount");
         targetLinkedLogonId = eventData.get("TargetLinkedLogonId");
         elevatedToken = eventData.get("ElevatedToken");
+    }
+
+    private int parseInt(String str) {
+        try {
+            return Integer.parseInt(str);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     @Override

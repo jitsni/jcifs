@@ -2,11 +2,13 @@ package jcifs.dcerpc.msrpc.eventing;
 
 import jcifs.dcerpc.msrpc.eventing.EventLogQuery.PathType;
 
-import java.io.FileInputStream;
-import java.io.InputStream;
+import javax.xml.stream.XMLStreamException;
+import java.io.*;
 import java.time.LocalTime;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /*
  * @author Jitendra Kotamraju
@@ -53,6 +55,17 @@ public class EventLogWatcherTest {
             return;
         }
         System.out.println(LocalTime.now() + " Received event = " + record);
+        BinXmlParser parser = new BinXmlParser();
+        BinXmlNode node = new BinXmlNode();
+        parser.parseDocument(node, record.buf, record.binXmlOffset(), record.binXmlSize);
+        String xml = node.children.get(0).xml();
+        //System.out.println(xml);
+        try(Reader reader = new StringReader(xml)) {
+            Event event = Event.event(reader);
+            System.out.println("\t" + event);
+        } catch (XMLStreamException|IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
