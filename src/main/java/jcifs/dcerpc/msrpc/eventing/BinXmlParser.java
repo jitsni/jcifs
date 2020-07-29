@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /*
+ * A recursive-descent parser for BinXml (MS-EVEN6 2.2.12)
+ *
  * @author Jitendra Kotamraju
  */
 public class BinXmlParser {
@@ -130,16 +132,17 @@ public class BinXmlParser {
                 entry.setValue(Encdec.dec_uint64le(buf, offset));
                 break;
             case GUID_TYPE :
-                entry.setValue(22);
+                entry.setValue(22);                 // TODO
                 break;
             case FILE_TIME_TYPE :
-                entry.setValue(22);
+                entry.setValue(22);                 // TODO
                 break;
             case HEX_INT64_TYPE :
-                entry.setValue(22);
+                entry.setValue(22);                 // TODO
                 break;
             case SID_TYPE :
-                entry.setValue(22);
+                String sid = sid(buf, offset, length);
+                entry.setValue(sid);
                 break;
             case BIN_XML_TYPE :
                 BinXmlNode node = new BinXmlNode();
@@ -489,6 +492,44 @@ public class BinXmlParser {
             chars[i] = (char) Encdec.dec_uint16le(buf, offset + 2 * i);
         }
         return new String(chars);
+    }
+
+    /* MS-DTYP spec
+       2.4.2.2 SID--Packet Representation
+
+            +---------------+---------------+-------------------------------+
+            |Revision (8)   | SubAuthority  |    Identifier Authority (48)  |
+            |               | Count (8)     |                               |
+            +---------------+-----------------------------------------------+
+            |                            ...                                |
+            +---------------------------------------------------------------+
+            |                   SubAuthority1 (32)                          |
+            +---------------------------------------------------------------+
+            |                   SubAuthority2 (32)                          |
+            +---------------------------------------------------------------+
+            |                   ...                                         |
+            +---------------------------------------------------------------+
+
+       2.4.2.1 SID String Format Syntax
+       ; If the identifier authority is < 2^32, the
+       ; identifier authority is represented as a decimal
+       ; number
+       ; If the identifier authority is >= 2^32,
+       ; the identifier authority is represented in
+       ; hexadecimal
+     */
+    private String sid(byte[] buf, int offset, int length) {
+        // byte revision = buf[offset];
+        byte subAuthorityCount = buf[offset + 1];
+        // TODO assuming identifierAuthority is < 2^32
+        int identifierAuthority = Encdec.dec_uint32be(buf, offset + 4);
+
+        StringBuilder sb = new StringBuilder("S-1-").append(identifierAuthority);
+        for(int i=0; i < subAuthorityCount; i++) {
+            int subAuthority = Encdec.dec_uint32le(buf, offset + 8 + 4 * i);
+            sb.append("-").append(subAuthority);
+        }
+        return sb.toString();
     }
 
     static class ValueEntry {

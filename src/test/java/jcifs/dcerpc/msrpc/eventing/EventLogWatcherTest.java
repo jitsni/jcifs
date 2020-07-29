@@ -59,7 +59,7 @@ public class EventLogWatcherTest {
         BinXmlNode node = new BinXmlNode();
         parser.parseDocument(node, record.buf, record.binXmlOffset(), record.binXmlSize);
         String xml = node.children.get(0).xml();
-        //System.out.println(xml);
+        System.out.println("\t" + xml);
         try(Reader reader = new StringReader(xml)) {
             Event event = Event.event(reader);
             System.out.println("\t" + event);

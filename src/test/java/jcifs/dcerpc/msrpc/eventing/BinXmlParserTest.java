@@ -7,7 +7,6 @@ import org.w3c.dom.Node;
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
@@ -230,7 +229,7 @@ public class BinXmlParserTest {
         // <Event xmlns="'http: //schemas.microsoft.com/win/2004/08/events/event'">
         String expression = "string(/Event/@xmlns)";
         String attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
-        //assertEquals("http://schemas.microsoft.com/win/2004/08/events/event", attrValue);
+        //TODO assertEquals("http://schemas.microsoft.com/win/2004/08/events/event", attrValue);
 
         //     <Provider Name="Microsoft-Windows-Wevttest" Guid="{03f41308-fa7b-4fb3-98b8-c2ed0a40d1ef}"/>
         expression = "string(/Event/System/Provider/@Name)";
@@ -239,6 +238,67 @@ public class BinXmlParserTest {
         expression = "string(/Event/System/Provider/@Guid)";
         attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
         assertEquals("{03f41308-fa7b-4fb3-98b8-c2ed0a40d1ef}", attrValue);
+
+        //     <EventID>100</EventID>
+        expression = "/Event/System/EventID/text()";
+        Node tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("100", tnode.getNodeValue());
+
+        //     <Version>0</Version>
+        expression = "/Event/System/Version/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("0", tnode.getNodeValue());
+
+        //     <Level>1</Level>
+        expression = "/Event/System/Level/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("1", tnode.getNodeValue());
+
+        //     <Task>100</Task>
+        expression = "/Event/System/Task/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("100", tnode.getNodeValue());
+
+        //     <Opcode>1</Opcode>
+        expression = "/Event/System/Opcode/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("1", tnode.getNodeValue());
+
+        // TODO     <Keywords>0x4000000000e00000</Keywords>
+        // TODO    <TimeCreated SystemTime="'2006-0614T21:40:16.312Z'"/>
+
+        //     <EventRecordID>6</EventRecordID>
+        expression = "/Event/System/EventRecordID/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("6", tnode.getNodeValue());
+
+        //     <Execution ProcessID="'2088'" ThreadID="'2464'"/>
+        expression = "string(/Event/System/Execution/@ProcessID)";
+        attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
+        assertEquals("2088", attrValue);
+        expression = "string(/Event/System/Execution/@ThreadID)";
+        attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
+        assertEquals("2464", attrValue);
+
+        //     <Channel>Microsoft-Windows-Wevttest/Operational/Wevttest</Channel>
+        expression = "/Event/System/Channel/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("Microsoft-Windows-Wevttest/Operational/Wevttest", tnode.getNodeValue());
+
+        //     <Computer>michaelm4-lh.ntdev.corp.microsoft.com</Computer>
+        expression = "/Event/System/Computer/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("michaelm4-lh.ntdev.corp.microsoft.com", tnode.getNodeValue());
+
+        //       <Property>1</Property>
+        expression = "/Event/UserData/MyEvent/Property/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("1", tnode.getNodeValue());
+
+        //       <Property2>2</Property2>
+        expression = "/Event/UserData/MyEvent/Property2/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("2", tnode.getNodeValue());
     }
 
     @Test
@@ -266,11 +326,11 @@ public class BinXmlParserTest {
             assertEquals("Security", event.channel);
             assertEquals("ADSERVER.idfw.local", event.computer);
 
-            //assertEquals("S-1-0-0", event.subjectUserSid);        TODO
+            assertEquals("S-1-0-0", event.subjectUserSid);
             assertEquals("-", event.subjectUserName);
             assertEquals("-", event.subjectDomainName);
             //assertEquals("0x0", event.subjectLogonId);            TODO
-            //assertEquals("S-1-5-18", event.targetUserSid);        TODO
+            assertEquals("S-1-5-18", event.targetUserSid);
             assertEquals("ADSERVER$", event.targetUserName);
             assertEquals("IDFW", event.targetDomainName);
             //assertEquals("0x10ac2b1", event.targetLogonId);       TODO
