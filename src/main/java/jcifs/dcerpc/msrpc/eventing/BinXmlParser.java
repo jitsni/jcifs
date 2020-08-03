@@ -2,6 +2,9 @@ package jcifs.dcerpc.msrpc.eventing;
 
 import jcifs.util.Encdec;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -47,6 +50,8 @@ public class BinXmlParser {
     private static final byte SID_TYPE = 0x13;
     private static final byte HEX_INT64_TYPE = 0x15;
     private static final byte BIN_XML_TYPE = 0x21;
+
+    private static final Instant ZERO = Instant.parse("1601-01-01T00:00:00Z");
 
     int inTemplate;
 
@@ -132,13 +137,16 @@ public class BinXmlParser {
                 entry.setValue(Encdec.dec_uint64le(buf, offset));
                 break;
             case GUID_TYPE :
-                entry.setValue(22);                 // TODO
+                String guid = guid(buf, offset, length);
+                entry.setValue(guid);
                 break;
             case FILE_TIME_TYPE :
-                entry.setValue(22);                 // TODO
+                String time = fileTime(buf, offset, length);
+                entry.setValue(time);
                 break;
             case HEX_INT64_TYPE :
-                entry.setValue(22);                 // TODO
+                String hex = hexInt64(buf, offset, length);
+                entry.setValue(hex);
                 break;
             case SID_TYPE :
                 String sid = sid(buf, offset, length);
@@ -151,7 +159,7 @@ public class BinXmlParser {
                 // assert after == offset + entry.valueByteLength;
                 break;
             default:
-                throw new UnsupportedOperationException("TODO " + entry.valueType);
+                throw new UnsupportedOperationException(String.format("TODO valueType=0x%02x", entry.valueType));
         }
         offset += entry.valueByteLength;
         return offset;
@@ -520,16 +528,67 @@ public class BinXmlParser {
      */
     private String sid(byte[] buf, int offset, int length) {
         // byte revision = buf[offset];
-        byte subAuthorityCount = buf[offset + 1];
+        int subAuthorityCount = Byte.toUnsignedInt(buf[offset + 1]);
         // TODO assuming identifierAuthority is < 2^32
         int identifierAuthority = Encdec.dec_uint32be(buf, offset + 4);
 
         StringBuilder sb = new StringBuilder("S-1-").append(identifierAuthority);
         for(int i=0; i < subAuthorityCount; i++) {
-            int subAuthority = Encdec.dec_uint32le(buf, offset + 8 + 4 * i);
+            long subAuthority = Integer.toUnsignedLong(Encdec.dec_uint32le(buf, offset + 8 + 4 * i));
             sb.append("-").append(subAuthority);
         }
         return sb.toString();
+    }
+
+    private String hexInt64(byte[] buf, int offset, int length) {
+        long value = Encdec.dec_uint64le(buf, offset);
+        return "0x" + Long.toHexString(value);
+    }
+
+    /* MS-DTYP spec
+       2.3.4.2 GUID--Packet Representation
+
+        +---------------------------------------------------------------+
+        |                       Data1 (32)                              |
+        +------------------------------+--------------------------------+
+        |          Data2 (16)          |           Data3 (16)           |
+        +------------------------------+--------------------------------+
+        |                       Data4 (64)                              |
+        +---------------------------------------------------------------+
+        |                   ...                                         |
+        +---------------------------------------------------------------+
+
+    */
+    private String guid(byte[] buf, int offset, int length) {
+        int data1 = Encdec.dec_uint32le(buf, offset);
+        int data2 = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset + 4));
+        int data3 = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset + 6));
+
+        StringBuilder sb = new StringBuilder("{");
+        sb.append(Integer.toHexString(data1));
+        sb.append("-");
+        sb.append(Integer.toHexString(data2));
+        sb.append("-");
+        sb.append(Integer.toHexString(data3));
+        sb.append("-");
+        sb.append(Integer.toHexString(Byte.toUnsignedInt(buf[offset+8])));
+        sb.append(Integer.toHexString(Byte.toUnsignedInt(buf[offset+9])));
+        sb.append("-");
+        for(int i=10; i < 16; i++) {
+            sb.append(Integer.toHexString(Byte.toUnsignedInt(buf[offset + i])));
+        }
+        sb.append("}");
+
+        return sb.toString().toUpperCase();
+    }
+
+    private String fileTime(byte[] buf, int offset, int length) {
+        long fileTime = Encdec.dec_uint64le(buf, offset);
+
+        Duration duration = Duration.of(fileTime / 10, ChronoUnit.MICROS)
+                .plus(fileTime % 10 * 100, ChronoUnit.NANOS);
+        Instant instant = ZERO.plus(duration);
+        return instant.toString();
     }
 
     static class ValueEntry {

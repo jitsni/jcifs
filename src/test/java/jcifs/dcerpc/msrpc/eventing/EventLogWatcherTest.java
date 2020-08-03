@@ -55,17 +55,7 @@ public class EventLogWatcherTest {
             return;
         }
         System.out.println(LocalTime.now() + " Received event = " + record);
-        BinXmlParser parser = new BinXmlParser();
-        BinXmlNode node = new BinXmlNode();
-        parser.parseDocument(node, record.buf, record.binXmlOffset(), record.binXmlSize);
-        String xml = node.children.get(0).xml();
-        System.out.println("\t" + xml);
-        try(Reader reader = new StringReader(xml)) {
-            Event event = Event.event(reader);
-            System.out.println("\t" + event);
-        } catch (XMLStreamException|IOException e) {
-            e.printStackTrace();
-        }
+        System.out.println("\t" + record.event() + "\n");
     }
 
 }

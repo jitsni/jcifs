@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 /*
  * @author Jitendra Kotamraju
  */
 public class BinXmlParserTest {
+
     // 4.4 Simple BinXml Example
     // <Event>
     // <Element1>abc</Element1>
@@ -201,13 +201,15 @@ public class BinXmlParserTest {
         Document document = db.parse(new ByteArrayInputStream(xml.getBytes()));
         XPath xPath = XPathFactory.newInstance().newXPath();
 
-        // <Event xmlns="'http: //schemas.microsoft.com/win/2004/08/events/event'">
+        // <Element1>abc</Element1>
         String expression = "/Event/Element1/text()";
         Node tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
         assertEquals("abc", tnode.getNodeValue());
 
+        // <Element2> def &amp;&#60; ghi </Element2>
         // TODO /Event/Element2/text() doesn't work yet
 
+        // <Element3 AttrA='abc' AttrB='def&amp;&#60;ghi'/>
         expression = "string(/Event/Element3/@AttrA)";
         String attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
         assertEquals("abc", attrValue);
@@ -264,8 +266,15 @@ public class BinXmlParserTest {
         tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
         assertEquals("1", tnode.getNodeValue());
 
-        // TODO     <Keywords>0x4000000000e00000</Keywords>
-        // TODO    <TimeCreated SystemTime="'2006-0614T21:40:16.312Z'"/>
+        //     <Keywords>0x4000000000e00000</Keywords>
+        expression = "/Event/System/Keywords/text()";
+        tnode = (Node) xPath.compile(expression).evaluate(document, XPathConstants.NODE);
+        assertEquals("0x4000000000e00000", tnode.getNodeValue());
+
+        //     <TimeCreated SystemTime="'2006-0614T21:40:16.312Z'"/>
+        expression = "string(/Event/System/TimeCreated/@SystemTime)";
+        attrValue = (String) xPath.compile(expression).evaluate(document, XPathConstants.STRING);
+        assertEquals("2006-06-14T21:40:54.625807600Z", attrValue);
 
         //     <EventRecordID>6</EventRecordID>
         expression = "/Event/System/EventRecordID/text()";
@@ -317,8 +326,8 @@ public class BinXmlParserTest {
             assertEquals(0, event.level);
             assertEquals(12544, event.task);
             assertEquals(0, event.opcode);
-            //assertEquals("0x8020000000000000", event.keywords);
-            //assertEquals("2015-11-12T00:24:35.079785200Z", event.timeCreated);
+            assertEquals("0x8020000000000000", event.keywords);
+            assertEquals("2020-07-23T03:02:30.967149100Z", event.timeCreated);
             assertEquals(28492, event.eventRecordId);
             //assertEquals("{00D66690-1CDF-0000-AC66-D600DF1CD101}", event.activityId);
             assertEquals(468, event.processId);
@@ -329,20 +338,20 @@ public class BinXmlParserTest {
             assertEquals("S-1-0-0", event.subjectUserSid);
             assertEquals("-", event.subjectUserName);
             assertEquals("-", event.subjectDomainName);
-            //assertEquals("0x0", event.subjectLogonId);            TODO
+            assertEquals("0x0", event.subjectLogonId);
             assertEquals("S-1-5-18", event.targetUserSid);
             assertEquals("ADSERVER$", event.targetUserName);
             assertEquals("IDFW", event.targetDomainName);
-            //assertEquals("0x10ac2b1", event.targetLogonId);       TODO
+            assertEquals("0x10ac2b1", event.targetLogonId);
             assertEquals(3, event.logonType);
             assertEquals("Kerberos", event.logonProcessName);
             assertEquals("Kerberos", event.authenticationPackageName);
             assertEquals("-", event.workstationName);
-            //assertEquals("{134F33DF-F594-7333-AD80-41955568AED9}", event.logonGuid);  TODO
+            assertEquals("{134F33DF-F594-7333-AD80-41955568AED9}", event.logonGuid);
             assertEquals("-", event.transmittedServices);
             assertEquals("-", event.lmPackageName);
             assertEquals("0", event.keyLength);
-            //assertEquals("0x0", event.logonProcessId);    TODO
+            assertEquals("0x0", event.logonProcessId);
             assertEquals("-", event.processName);
             assertEquals("10.92.170.226", event.ipAddress);
             assertEquals(56190, event.ipPort);

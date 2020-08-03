@@ -2,6 +2,11 @@ package jcifs.dcerpc.msrpc.eventing;
 
 import jcifs.util.Encdec;
 
+import javax.xml.stream.XMLStreamException;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+
 /*
  * 2.2.17 Result Set in MS-EVEN6
  *
@@ -58,6 +63,19 @@ public class EventRecord {
 
     int binXmlOffset() {
         return offset + 20;
+    }
+
+    public Event event() {
+        BinXmlParser parser = new BinXmlParser();
+        BinXmlNode node = new BinXmlNode();
+        parser.parseDocument(node, buf, binXmlOffset(), binXmlSize);
+        String xml = node.children.get(0).xml();
+        try(Reader reader = new StringReader(xml)) {
+            return Event.event(reader);
+        } catch (XMLStreamException | IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
