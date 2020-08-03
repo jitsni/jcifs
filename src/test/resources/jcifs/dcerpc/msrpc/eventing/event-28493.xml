@@ -1,0 +1,25 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"> 
+<System> 
+<Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" /> 
+<EventID>4634</EventID> 
+<Version>0</Version> 
+<Level>0</Level> 
+<Task>12545</Task> 
+<Opcode>0</Opcode> 
+<Keywords>0x8020000000000000</Keywords> 
+<TimeCreated SystemTime="2020-07-23T03:02:31.295235300Z" /> 
+<EventRecordID>28493</EventRecordID> 
+<Correlation /> 
+<Execution ProcessID="468" ThreadID="1140" /> 
+<Channel>Security</Channel> 
+<Computer>ADSERVER.idfw.local</Computer> 
+<Security /> 
+</System> 
+<EventData> 
+<Data Name="TargetUserSid">S-1-5-18</Data> 
+<Data Name="TargetUserName">ADSERVER$</Data> 
+<Data Name="TargetDomainName">IDFW</Data> 
+<Data Name="TargetLogonId">0x10ac2b1</Data> 
+<Data Name="LogonType">3</Data> 
+</EventData> 
+</Event>

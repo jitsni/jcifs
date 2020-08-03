@@ -359,6 +359,37 @@ public class BinXmlParserTest {
         }
     }
 
+    @Test
+    public void logoffEvent() throws Exception {
+        try(InputStream in = getClass().getResourceAsStream("event-28493.bin")) {
+            byte[] buf = readNBytes(in, Integer.MAX_VALUE);
+            BinXmlNode node = new BinXmlNode();
+            BinXmlParser parser = new BinXmlParser();
+            parser.parseDocument(node, buf, 0, buf.length);
+            String xml = node.children.get(0).xml();
+            Reader reader = new StringReader(xml);
+            LogoffEvent event = (LogoffEvent) Event.event(reader);
+
+            assertEquals(4634, event.eventId);
+            assertEquals(0, event.version);
+            assertEquals(0, event.level);
+            assertEquals(12545, event.task);
+            assertEquals(0, event.opcode);
+            assertEquals("0x8020000000000000", event.keywords);
+            assertEquals("2020-07-23T03:02:31.295235300Z", event.timeCreated);
+            assertEquals(28493, event.eventRecordId);
+            assertEquals(468, event.processId);
+            assertEquals(1140, event.threadId);
+            assertEquals("Security", event.channel);
+            assertEquals("ADSERVER.idfw.local", event.computer);
+
+            assertEquals("S-1-5-18", event.targetUserSid);
+            assertEquals("ADSERVER$", event.targetUserName);
+            assertEquals("IDFW", event.targetDomainName);
+            assertEquals("0x10ac2b1", event.targetLogonId);
+            assertEquals(3, event.logonType);
+        }
+    }
 
     // JDK9's InputStream#readNBytes
     private byte[] readNBytes(InputStream in, int len) throws IOException {
