@@ -1,5 +1,8 @@
 package jcifs.dcerpc.msrpc.eventing;
 
+import jcifs.dcerpc.msrpc.eventing.BinXmlNode.BinXmlElement;
+import jcifs.dcerpc.msrpc.eventing.BinXmlNode.BinXmlRoot;
+import jcifs.dcerpc.msrpc.eventing.BinXmlNode.BinXmlTemplate;
 import jcifs.util.Encdec;
 
 import java.time.Duration;
@@ -53,10 +56,20 @@ public class BinXmlParser {
 
     private static final Instant ZERO = Instant.parse("1601-01-01T00:00:00Z");
 
-    int inTemplate;
+    private final BinXmlRoot root;
+    private int inTemplate;
+
+    public BinXmlParser(byte[] buf, int offset, int length) {
+        root = new BinXmlRoot();
+        parseDocument(root, buf, offset, length);
+    }
+
+    public String xml() {
+        return root.xml();
+    }
 
     // Document = 0*1Prolog Fragment 0*1Misc EOFToken
-    int parseDocument(BinXmlNode element, byte[] buf, int offset, int length) {
+    private int parseDocument(BinXmlRoot element, byte[] buf, int offset, int length) {
         offset = parseFragment(element, buf, offset, length);
         if (buf[offset] == EOF) {
             offset++;                   // EOFToken
@@ -67,7 +80,7 @@ public class BinXmlParser {
     }
 
     // Fragment = 0*FragmentHeader ( Element / TemplateInstance )
-    int parseFragment(BinXmlNode node, byte[] buf, int offset, int length) {
+    private int parseFragment(BinXmlRoot node, byte[] buf, int offset, int length) {
         while (buf[offset] == FRAGMENT_HEADER) {
             offset = parseFragmentHeader(buf, offset, length);
         }
@@ -82,8 +95,8 @@ public class BinXmlParser {
     }
 
     // TemplateInstance = TemplateInstanceToken TemplateDef TemplateInstanceData
-    private int parseTemplateInstance(BinXmlNode node, byte[] buf, int offset, int length) {
-        BinXmlNode.BinXmlTemplate child = new BinXmlNode.BinXmlTemplate();
+    private int parseTemplateInstance(BinXmlRoot node, byte[] buf, int offset, int length) {
+        BinXmlTemplate child = new BinXmlTemplate();
         node.addChild(child);
 
         offset++;
@@ -94,7 +107,7 @@ public class BinXmlParser {
     }
 
     // TemplateInstanceData = ValueSpec *Value
-    private int parseTemplateInstanceData(BinXmlNode.BinXmlTemplate template, byte[] buf, int offset, int length) {
+    private int parseTemplateInstanceData(BinXmlTemplate template, byte[] buf, int offset, int length) {
         int noValues = Encdec.dec_uint32le(buf, offset);
         List<ValueEntry> entries = new ArrayList<>();
         template.setValues(entries);
@@ -153,7 +166,7 @@ public class BinXmlParser {
                 entry.setValue(sid);
                 break;
             case BIN_XML_TYPE :
-                BinXmlNode node = new BinXmlNode();
+                BinXmlRoot node = new BinXmlRoot();
                 entry.setValue(node);
                 int after = parseFragment(node, buf, offset, length);
                 // assert after == offset + entry.valueByteLength;
@@ -206,7 +219,7 @@ public class BinXmlParser {
     }
 
     // TemplateDef = %b0 TemplateId TemplateDefByteLength 0*FragmentHeader Element EOFToken
-    private int parseTemplateDef(BinXmlNode.BinXmlTemplate template, byte[] buf, int offset, int length) {
+    private int parseTemplateDef(BinXmlTemplate template, byte[] buf, int offset, int length) {
         inTemplate++;
         offset++;                   // %b0
         offset += 16;               // GUID
@@ -226,13 +239,31 @@ public class BinXmlParser {
         return offset;
     }
 
+    private int parseElement(BinXmlRoot node, byte[] buf, int offset, int length) {
+        BinXmlElement child = new BinXmlElement();
+        node.addChild(child);
+
+        return _parseElement(child, buf, offset, length);
+    }
+
+    private int parseElement(BinXmlElement element, byte[] buf, int offset, int length) {
+        BinXmlElement child = new BinXmlElement();
+        element.addChild(child);
+
+        return _parseElement(child, buf, offset, length);
+    }
+
+    private int parseElement(BinXmlTemplate template, byte[] buf, int offset, int length) {
+        BinXmlElement child = new BinXmlElement();
+        template.addChild(child);
+
+        return _parseElement(child, buf, offset, length);
+    }
+
     // Element =
     //    ( StartElement CloseStartElementToken Content EndElementToken ) /
     //    ( StartElement CloseEmptyElementToken )
-    private int parseElement(BinXmlNode node, byte[] buf, int offset, int length) {
-        BinXmlNode.BinXmlElement child = new BinXmlNode.BinXmlElement();
-        node.addChild(child);
-
+    private int _parseElement(BinXmlElement child, byte[] buf, int offset, int length) {
         offset = parseStartElement(child, buf, offset, length);
         if (buf[offset] == CLOSE_START_ELEMENT) {
             offset++;               // CloseStartElementToken
@@ -251,7 +282,7 @@ public class BinXmlParser {
     }
 
     // Content = 0*(Element / CharData / CharRef / EntityRef / CDATASection / PI)
-    private int parseContent(BinXmlNode.BinXmlElement element, byte[] buf, int offset, int length) {
+    private int parseContent(BinXmlElement element, byte[] buf, int offset, int length) {
         while (isElement(buf[offset]) ||
                 isCharData(buf[offset]) ||
                 isCharRef(buf[offset]) ||
@@ -312,7 +343,7 @@ public class BinXmlParser {
     }
 
     // CharData = ValueText / Substitution
-    private int parseCharData(BinXmlNode.BinXmlElement element, byte[] buf, int offset, int length) {
+    private int parseCharData(BinXmlElement element, byte[] buf, int offset, int length) {
         if (isValueText(buf[offset])) {
             offset = parseValueText(element::setText, buf, offset, length);
         } else if (isSubstitution(buf[offset])) {
@@ -325,7 +356,7 @@ public class BinXmlParser {
     }
 
     // StartElement = OpenStartElementToken 0*1DependencyId ElementByteLength Name 0*1AttributeList
-    private int parseStartElement(BinXmlNode.BinXmlElement element, byte[] buf, int offset, int length) {
+    private int parseStartElement(BinXmlElement element, byte[] buf, int offset, int length) {
         boolean more = more(buf[offset]);
 
         offset++;                   // OpenStartElementToken
@@ -343,7 +374,7 @@ public class BinXmlParser {
     }
 
     // AttributeList = AttributeListByteLength 1*Attribute
-    private int parseAttributeList(BinXmlNode.BinXmlElement element, byte[] buf, int offset, int length) {
+    private int parseAttributeList(BinXmlElement element, byte[] buf, int offset, int length) {
         Encdec.dec_uint32le(buf, offset);
         offset += 4;
 
@@ -369,7 +400,7 @@ public class BinXmlParser {
     }
 
     // Attribute = AttributeToken Name AttributeCharData ; Emit using Attribute Rule
-    private int parseAttribute(BinXmlNode.BinXmlElement element, byte[] buf, int offset, int length) {
+    private int parseAttribute(BinXmlElement element, byte[] buf, int offset, int length) {
         offset++;                       // AttributeToken
         BinXmlNode.Attribute attribute = new BinXmlNode.Attribute();
         element.addAttribute(attribute);

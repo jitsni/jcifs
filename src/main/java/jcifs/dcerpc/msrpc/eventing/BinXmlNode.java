@@ -8,46 +8,50 @@ import java.util.Objects;
 /*
  * @author Jitendra Kotamraju
  */
-public class BinXmlNode {
+abstract class BinXmlNode {
 
-    final List<BinXmlNode> children;
+    static class BinXmlRoot {
+        private BinXmlElement element;
+        private BinXmlTemplate template;
 
-    BinXmlNode() {
-        children = new ArrayList<>();
-    }
 
-    void addChild(BinXmlNode child) {
-        children.add(child);
-    }
-
-    public String xml() {
-        return xml(Collections.emptyList());
-    }
-
-    String xml(List<BinXmlParser.ValueEntry> substitutions) {
-        StringBuilder sb = new StringBuilder();
-        for(BinXmlNode node : children) {
-            sb.append(node.xml(substitutions));
+        void addChild(BinXmlElement child) {
+            assert this.element == null && this.template == null;
+            this.element = child;
         }
-        return sb.toString();
+
+        void addChild(BinXmlTemplate child) {
+            assert this.element == null && this.template == null;
+            this.template = child;
+        }
+
+        String xml() {
+            return element != null ? element.xml() : template.xml();
+        }
     }
 
-    public static class BinXmlElement extends BinXmlNode {
-        final List<Attribute> attributeList;
+    static class BinXmlElement {
+        private final List<BinXmlElement> children;
+        private final List<Attribute> attributeList;
 
-        String tag;
-        String text;
-        Substitution textSubstitution;
+        private String tag;
+        private String text;
+        private Substitution textSubstitution;
 
         BinXmlElement() {
+            children = new ArrayList<>();
             attributeList = new ArrayList<>();
+        }
+
+        void addChild(BinXmlElement child) {
+            children.add(child);
         }
 
         void setTag(String tag) {
             this.tag = tag;
         }
 
-        public void setText(String text) {
+        void setText(String text) {
             this.text = text;
         }
 
@@ -55,12 +59,15 @@ public class BinXmlNode {
             this.textSubstitution = substitution;
         }
 
-        public void addAttribute(Attribute attribute) {
+        void addAttribute(Attribute attribute) {
             attributeList.add(attribute);
         }
 
-        @Override
-        String xml(List<BinXmlParser.ValueEntry> substitutions) {
+        String xml() {
+            return xml(Collections.emptyList());
+        }
+
+        private String xml(List<BinXmlParser.ValueEntry> substitutions) {
             if (skipElement(substitutions,this)) {
                 return "";
             }
@@ -83,7 +90,7 @@ public class BinXmlNode {
             } else {
                 sb.append(">");
                 if (!children.isEmpty()) {
-                    for (BinXmlNode child : children) {
+                    for (BinXmlElement child : children) {
                         sb.append(child.xml(substitutions));
                     }
                 }
@@ -110,7 +117,7 @@ public class BinXmlNode {
             return false;
         }
 
-        String attributeValue(List<BinXmlParser.ValueEntry> substitutions, Attribute attribute) {
+        private String attributeValue(List<BinXmlParser.ValueEntry> substitutions, Attribute attribute) {
             if (attribute.value != null) {
                 return attribute.value;
             } else if (attribute.substitution != null) {
@@ -121,13 +128,13 @@ public class BinXmlNode {
             return null;
         }
 
-        String text(List<BinXmlParser.ValueEntry> substitutions) {
+        private String text(List<BinXmlParser.ValueEntry> substitutions) {
             if (text != null) {
                 return text;
             } else if (textSubstitution != null) {
                 Object value = substitutions.get(textSubstitution.index).value;
-                if (value instanceof BinXmlNode) {
-                    return ((BinXmlNode) value).xml();
+                if (value instanceof BinXmlRoot) {
+                    return ((BinXmlRoot) value).xml();
                 }
                 return Objects.toString(value);
             }
@@ -135,34 +142,31 @@ public class BinXmlNode {
             return null;
         }
 
+        @Override
         public String toString() {
             return "<"+tag+" "+attributeList+" >";
         }
 
     }
 
-    public static class BinXmlTemplate extends BinXmlNode {
+    static class BinXmlTemplate {
+        private BinXmlElement element;
+
         int templateInstanceDataOffset;
-        List<BinXmlParser.ValueEntry> substitutions;
+        private List<BinXmlParser.ValueEntry> substitutions;
 
         void setValues(List<BinXmlParser.ValueEntry> values) {
             this.substitutions = values;
         }
 
-        @Override
-        public String xml() {
-            return xml(Collections.emptyList());
+        void addChild(BinXmlElement child) {
+            this.element = child;
         }
 
-        @Override
-        String xml(List<BinXmlParser.ValueEntry> substitutions) {
-            StringBuilder sb = new StringBuilder();
-            for(BinXmlNode node : this.children) {
-                String xml = node.xml(this.substitutions);
-                sb.append(xml);
-            }
-            return sb.toString();
+        String xml() {
+            return element.xml(substitutions);
         }
+
     }
 
     static class Substitution {

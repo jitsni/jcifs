@@ -190,11 +190,9 @@ public class BinXmlParserTest {
 
     @Test
     public void simpleBinXml() throws Exception {
-        BinXmlParser parser = new BinXmlParser();
         byte[] buf = DatatypeConverter.parseHexBinary(xmlSimple);
-        BinXmlNode node = new BinXmlNode();
-        parser.parseDocument(node, buf, 0, buf.length);
-        String xml = node.children.get(0).xml();
+        BinXmlParser parser = new BinXmlParser(buf, 0, buf.length);
+        String xml = parser.xml();
 
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = builderFactory.newDocumentBuilder();
@@ -217,11 +215,9 @@ public class BinXmlParserTest {
 
     @Test
     public void binXmlTemplates() throws Exception {
-        BinXmlParser parser = new BinXmlParser();
         byte[] buf = DatatypeConverter.parseHexBinary(xmlTemplates);
-        BinXmlNode node = new BinXmlNode();
-        parser.parseDocument(node, buf, 0, buf.length);
-        String xml = node.children.get(0).xml();
+        BinXmlParser parser = new BinXmlParser(buf, 0, buf.length);
+        String xml = parser.xml();
 
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = builderFactory.newDocumentBuilder();
@@ -314,10 +310,8 @@ public class BinXmlParserTest {
     public void logonEvent() throws Exception {
         try(InputStream in = getClass().getResourceAsStream("event-28492.bin")) {
             byte[] buf = readNBytes(in, Integer.MAX_VALUE);
-            BinXmlNode node = new BinXmlNode();
-            BinXmlParser parser = new BinXmlParser();
-            parser.parseDocument(node, buf, 0, buf.length);
-            String xml = node.children.get(0).xml();
+            BinXmlParser parser = new BinXmlParser(buf, 0, buf.length);
+            String xml = parser.xml();
             Reader reader = new StringReader(xml);
             LogonEvent event = (LogonEvent) Event.event(reader);
 
@@ -363,10 +357,8 @@ public class BinXmlParserTest {
     public void logoffEvent() throws Exception {
         try(InputStream in = getClass().getResourceAsStream("event-28493.bin")) {
             byte[] buf = readNBytes(in, Integer.MAX_VALUE);
-            BinXmlNode node = new BinXmlNode();
-            BinXmlParser parser = new BinXmlParser();
-            parser.parseDocument(node, buf, 0, buf.length);
-            String xml = node.children.get(0).xml();
+            BinXmlParser parser = new BinXmlParser(buf, 0, buf.length);
+            String xml = parser.xml();
             Reader reader = new StringReader(xml);
             LogoffEvent event = (LogoffEvent) Event.event(reader);
 

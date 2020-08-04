@@ -66,10 +66,8 @@ public class EventRecord {
     }
 
     public Event event() {
-        BinXmlParser parser = new BinXmlParser();
-        BinXmlNode node = new BinXmlNode();
-        parser.parseDocument(node, buf, binXmlOffset(), binXmlSize);
-        String xml = node.children.get(0).xml();
+        BinXmlParser parser = new BinXmlParser(buf, binXmlOffset(), binXmlSize);
+        String xml = parser.xml();
         try(Reader reader = new StringReader(xml)) {
             return Event.event(reader);
         } catch (XMLStreamException | IOException e) {
