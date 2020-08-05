@@ -151,8 +151,6 @@ abstract class BinXmlNode {
 
     static class BinXmlTemplate {
         private BinXmlElement element;
-
-        int templateInstanceDataOffset;
         private List<BinXmlParser.ValueEntry> substitutions;
 
         void setValues(List<BinXmlParser.ValueEntry> values) {
