@@ -24,6 +24,9 @@ public class EventLogSession implements Closeable {
     private DcerpcTcpHandle pullHandle;
     private DcerpcTcpHandle waitHandle;
 
+    private int connectionTimeout = -1;
+    private int epmTimeout = -1;
+
     /**
      * Initializes a new EventLogSession object, and establishes a connection with the Event Log
      * service on the specified computer. The specified credentials (user name and password)
@@ -57,9 +60,23 @@ public class EventLogSession implements Closeable {
         auth = new NtlmPasswordAuthentication(domain, user, password);
     }
 
+    public void setConnectionTimeout(int connectionTimeout) {
+        this.connectionTimeout = connectionTimeout;
+    }
+
+    public void setEpmTimeout(int epmTimeout) {
+        this.epmTimeout = epmTimeout;
+    }
+
     void establishPullConnection() throws IOException {
         pullHandle = (DcerpcTcpHandle) DcerpcHandle.getHandle("ncacn_ip_tcp:" + server +"[even6]", auth);
         pullHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
+        if (connectionTimeout != -1) {
+            pullHandle.setConnectTimeout(connectionTimeout);
+        }
+        if (epmTimeout != -1) {
+            pullHandle.setSoTimeout(epmTimeout);
+        }
         pullHandle.bind();
         DcerpcMessage auth3 = new Auth3();
         pullHandle.send(auth3);
@@ -70,6 +87,12 @@ public class EventLogSession implements Closeable {
         waitHandle = new DcerpcTcpHandle(server, port, "even6");
         waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         waitHandle.setAssocGroup(pullHandle.getAssocGroup());   // associate pull and wait connections
+        if (connectionTimeout != -1) {
+            waitHandle.setConnectTimeout(connectionTimeout);
+        }
+        if (epmTimeout != -1) {
+            waitHandle.setSoTimeout(epmTimeout);
+        }
         waitHandle.bind();
         DcerpcMessage auth3 = new Auth3();
         waitHandle.send(auth3);

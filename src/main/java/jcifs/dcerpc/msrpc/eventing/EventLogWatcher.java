@@ -29,7 +29,11 @@ public class EventLogWatcher implements Closeable {
     private final int flags;
 
     private EvtRpcRegisterRemoteSubscription subscription;
+    private int requestedRecords = REQUESTED_RECORDS;
+    private int pullTimeout = PULL_TIMEOUT;
+    private int waitTimeout = WAIT_TIMEOUT;
     private volatile boolean closed;
+    private volatile boolean ioException;
 
     /**
      * Initializes a new instance of the EventLogWatcher class by specifying an event query.
@@ -84,27 +88,42 @@ public class EventLogWatcher implements Closeable {
         this.flags = flags();
     }
 
-    public void start() throws IOException {
-        subscription = new EvtRpcRegisterRemoteSubscription(query.path, query.query, null, flags);
-        query.session.sendPull(subscription, PULL_TIMEOUT);
-        if (subscription.retVal != 0) {
-            throw new EventLogException("EvtRpcRegisterRemoteSubscription return value = " + subscription.retVal);
-        }
+    public void setRequestedRecords(int records) {
+        this.requestedRecords = records;
+    }
 
+    public void setPullTimeout(int pullTimeout) {
+        this.pullTimeout = pullTimeout;
+    }
+
+    public void setWaitTimeout(int waitTimeout) {
+        this.waitTimeout = waitTimeout;
+    }
+
+    public void start() {
         new Thread(this::run, "EventLogWatcher-" + threadNo.getAndIncrement()).start();
     }
 
     private void run() {
         try {
+            subscription = new EvtRpcRegisterRemoteSubscription(query.path, query.query, null, flags);
+            query.session.sendPull(subscription, pullTimeout);
+            if (subscription.retVal != 0) {
+                throw new EventLogException("EvtRpcRegisterRemoteSubscription return value = " + subscription.retVal);
+            }
+
             while (!closed) {
                 EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
-                query.session.sendWait(wait, WAIT_TIMEOUT);
+                query.session.sendWait(wait, waitTimeout);
                 if (!closed && wait.retVal != 0) {
                     throw new EventLogException("EvtRpcRemoteSubscriptionWaitAsync return value = " + wait.retVal);
                 }
                 pullEvents();
             }
         } catch (Exception e) {
+            if (e instanceof IOException) {
+                ioException = true;
+            }
             if (!closed) {
                 EventLogException ee = e instanceof EventLogException ? (EventLogException) e : new EventLogException(e);
                 eventCallback.onEntryWritten(new EventRecord(ee));
@@ -121,12 +140,12 @@ public class EventLogWatcher implements Closeable {
      *        within socket read timeout peroid.
      */
     private void pullEvents() throws IOException {
-        int recvRecords = REQUESTED_RECORDS;
+        int recvRecords = requestedRecords;
 
-        while (!closed && recvRecords == REQUESTED_RECORDS) {
+        while (!closed && recvRecords == requestedRecords) {
             EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
-                    subscription.handle, REQUESTED_RECORDS, PULL_TIMEOUT, 0);
-            query.session.sendPull(pull, PULL_TIMEOUT + 1000);
+                    subscription.handle, requestedRecords, pullTimeout, 0);
+            query.session.sendPull(pull, pullTimeout + 1000);
             if (pull.retVal != 0) {
                 throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal);
             }
@@ -157,26 +176,22 @@ public class EventLogWatcher implements Closeable {
         if (!closed) {
             closed = true;
 
-            // Cancel any pending EvtRpcRemoteSubscriptionWaitAsync or EvtRpcRemoteSubscriptionNext request
-            EvtRpcCancel cancel = new EvtRpcCancel(subscription.control);
-            try {
-                query.session.sendPull(cancel, PULL_TIMEOUT);
-            } catch (IOException ioe) {
-                // ignore
-            }
+            if (!ioException) {
+                try {
+                    // Cancel any pending EvtRpcRemoteSubscriptionWaitAsync or EvtRpcRemoteSubscriptionNext request
+                    EvtRpcCancel cancel = new EvtRpcCancel(subscription.control);
+                    query.session.sendPull(cancel, pullTimeout);
 
-            // Close handles
-            EvtRpcClose pull = new EvtRpcClose(subscription.handle);
-            try {
-                query.session.sendPull(pull, PULL_TIMEOUT);
-            } catch (IOException ioe) {
-                // ignore
-            }
-            EvtRpcClose wait = new EvtRpcClose(subscription.control);
-            try {
-                query.session.sendPull(wait, PULL_TIMEOUT);
-            } catch (IOException ioe) {
-                // ignore
+
+                    // Close handles
+                    EvtRpcClose pull = new EvtRpcClose(subscription.handle);
+                    query.session.sendPull(pull, pullTimeout);
+
+                    EvtRpcClose wait = new EvtRpcClose(subscription.control);
+                    query.session.sendPull(wait, pullTimeout);
+                } catch (Exception e) {
+                    // ignore
+                }
             }
 
             query.session.close();

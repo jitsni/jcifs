@@ -53,6 +53,8 @@ public class DcerpcTcpHandle extends DcerpcHandle {
     public void bind() throws IOException {
         if (port == -1) {
             DcerpcTcpHandle ehandle = new DcerpcTcpHandle(binding.server, 135, "epm");
+            ehandle.setConnectTimeout(connectTimeout);
+            ehandle.setSoTimeout(soTimeout);
             ehandle.bind();
             EpmMap rpc = new EpmMap(binding.uuid, binding.major);
             ehandle.sendrecv(rpc);
