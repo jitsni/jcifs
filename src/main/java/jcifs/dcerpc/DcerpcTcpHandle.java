@@ -14,7 +14,7 @@ import jcifs.util.Encdec;
 /*
  * @author Jitendra Kotamraju
  */
-public class DcerpcTcpHandle extends DcerpcHandle {
+public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
     private static final Logger LOGGER = Logger.getLogger(DcerpcTcpHandle.class.getName());
 
     private static final int DEFAULT_SO_TIMEOUT = 60000;
@@ -49,19 +49,23 @@ public class DcerpcTcpHandle extends DcerpcHandle {
         this.soTimeout = timeout;
     }
 
-    @Override
-    public void bind() throws IOException {
-        if (port == -1) {
-            DcerpcTcpHandle ehandle = new DcerpcTcpHandle(binding.server, 135, "epm");
+    public void epmBind() throws IOException {
+        try(DcerpcTcpHandle ehandle = new DcerpcTcpHandle(binding.server, 135, "epm")) {
             ehandle.setConnectTimeout(connectTimeout);
             ehandle.setSoTimeout(soTimeout);
             ehandle.bind();
             EpmMap rpc = new EpmMap(binding.uuid, binding.major);
             ehandle.sendrecv(rpc);
-            ehandle.close();
-            LOGGER.info(String.format("%s epm port = %d", binding, rpc.getPort()));
-
             port = rpc.getPort();
+        }
+    }
+
+    @Override
+    public void bind() throws IOException {
+        if (port == -1) {
+            epmBind();
+
+            LOGGER.info(String.format("%s epm port = %d", binding, port));
         }
 
         try {

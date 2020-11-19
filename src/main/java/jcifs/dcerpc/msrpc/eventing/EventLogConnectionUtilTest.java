@@ -3,7 +3,6 @@ package jcifs.dcerpc.msrpc.eventing;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -27,14 +26,18 @@ public class EventLogConnectionUtilTest {
         String user = properties.getProperty("user");
         String password = properties.getProperty("password");
 
-        int connectionTimeout = 5000;
+        int connectTimeout = 5000;
         int epmTimeout = 3000;
         int pullTimeout = 3000;
         int waitTimeout = 3000;
         int totalTimeout = 7000;
 
-        try (EventLogConnectionUtil util = new EventLogConnectionUtil(hostname, domain, user, password, "Security")) {
-            util.setConnectionTimeout(connectionTimeout);
+        EventLogPortUtil portUtil = new EventLogPortUtil(hostname);
+        int port = portUtil.getPort(connectTimeout, epmTimeout);
+        System.out.println(String.format("%s even6 epm port = %d", hostname, port));
+
+        try (EventLogConnectionUtil util = new EventLogConnectionUtil(hostname, port, domain, user, password, "Security")) {
+            util.setConnectTimeout(connectTimeout);
             util.setEpmTimeout(epmTimeout);
             util.setPullTimeout(pullTimeout);
             util.setWaitTimeout(waitTimeout);

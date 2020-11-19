@@ -2,13 +2,10 @@ package jcifs.dcerpc.msrpc.eventing;
 
 import jcifs.dcerpc.msrpc.eventing.EventLogQuery.PathType;
 
-import javax.xml.stream.XMLStreamException;
 import java.io.*;
 import java.time.LocalTime;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /*
  * @author Jitendra Kotamraju

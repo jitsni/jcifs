@@ -38,8 +38,8 @@ public class EventLogConnectionUtil implements AutoCloseable {
     private final EventLogSession session;
 
 
-    public EventLogConnectionUtil(String server, String domain, String user, String password, String path) {
-        session = new EventLogSession(server, domain, user, password);
+    public EventLogConnectionUtil(String server, int port, String domain, String user, String password, String path) {
+        session = new EventLogSession(server, port, domain, user, password);
         String xpath = "*";
         EventLogQuery query = new EventLogQuery(path, EventLogQuery.PathType.LogName, xpath, session, false);
         connectionStatus = new CompletableFuture<>();
@@ -47,7 +47,7 @@ public class EventLogConnectionUtil implements AutoCloseable {
         watcher = new EventLogWatcher(query, null, true, callback);
     }
 
-    public void setConnectionTimeout(int timeout) {
+    public void setConnectTimeout(int timeout) {
         session.setConnectionTimeout(timeout);
     }
 

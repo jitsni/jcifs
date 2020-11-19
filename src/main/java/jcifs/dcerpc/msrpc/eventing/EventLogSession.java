@@ -18,6 +18,7 @@ import java.net.SocketTimeoutException;
  */
 public class EventLogSession implements Closeable {
     private final String server;
+    private final int port;
     private final boolean encrypted;
     private final NtlmPasswordAuthentication auth;
 
@@ -26,6 +27,10 @@ public class EventLogSession implements Closeable {
 
     private int connectionTimeout = -1;
     private int epmTimeout = -1;
+
+    public EventLogSession(String server, String domain, String user, String password) {
+        this(server, -1, domain, user, password, true);
+    }
 
     /**
      * Initializes a new EventLogSession object, and establishes a connection with the Event Log
@@ -37,8 +42,8 @@ public class EventLogSession implements Closeable {
      * @param user the user name used to connect to the remote computer
      * @param password the password used to connect to the remote computer
      */
-    public EventLogSession(String server, String domain, String user, String password) {
-        this(server, domain, user, password, true);
+    public EventLogSession(String server, int port, String domain, String user, String password) {
+        this(server, port, domain, user, password, true);
     }
 
     /**
@@ -53,8 +58,9 @@ public class EventLogSession implements Closeable {
      * @param encrypted true if transferred data is to be encrypted
      *                  false if transferred data is not to be encrypted (but only integrity)
      */
-    public EventLogSession(String server, String domain, String user, String password, boolean encrypted) {
+    public EventLogSession(String server, int port, String domain, String user, String password, boolean encrypted) {
         this.server = server;
+        this.port = port;
         this.encrypted = encrypted;
 
         auth = new NtlmPasswordAuthentication(domain, user, password);
@@ -69,7 +75,7 @@ public class EventLogSession implements Closeable {
     }
 
     void establishPullConnection() throws IOException {
-        pullHandle = (DcerpcTcpHandle) DcerpcHandle.getHandle("ncacn_ip_tcp:" + server +"[even6]", auth);
+        pullHandle = new DcerpcTcpHandle(server, port, "even6");
         pullHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         if (connectionTimeout != -1) {
             pullHandle.setConnectTimeout(connectionTimeout);
