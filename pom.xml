@@ -94,6 +94,10 @@
         </dependencies>
     </dependencyManagement>
 
+    <properties>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -169,6 +173,12 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                        </gpgArguments>
+                                    </configuration>
                             </execution>
                         </executions>
                     </plugin>
