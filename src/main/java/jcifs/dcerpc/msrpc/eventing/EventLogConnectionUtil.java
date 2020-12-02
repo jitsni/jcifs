@@ -6,6 +6,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_IO;
+import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_OK;
+import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_TIMED_OUT;
+import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_UNKNOWN;
+
 public class EventLogConnectionUtil implements AutoCloseable {
 
     public enum Status {
@@ -14,6 +19,11 @@ public class EventLogConnectionUtil implements AutoCloseable {
     }
 
     public static class ConnectionStatus {
+        public static final ConnectionStatus STATUS_OK = new ConnectionStatus(Status.OK, null);
+        public static final ConnectionStatus STATUS_IO = new ConnectionStatus(Status.ERROR, "I/O error");
+        public static final ConnectionStatus STATUS_UNKNOWN = new ConnectionStatus(Status.ERROR, "Unknown error");
+        public static final ConnectionStatus STATUS_TIMED_OUT = new ConnectionStatus(Status.ERROR, "Timed out");
+
         public final Status status;
         public final String errorMsg;
 
@@ -21,22 +31,16 @@ public class EventLogConnectionUtil implements AutoCloseable {
             this.status = status;
             this.errorMsg = errorMsg;
         }
-
         @Override
         public String toString() {
             return errorMsg == null ? status.toString() : status + ", " + errorMsg;
         }
-    }
 
-    private static final ConnectionStatus STATUS_OK = new ConnectionStatus(Status.OK, null);
-    private static final ConnectionStatus STATUS_IO = new ConnectionStatus(Status.ERROR, "I/O error");
-    private static final ConnectionStatus STATUS_UNKNOWN = new ConnectionStatus(Status.ERROR, "Unknown error");
-    private static final ConnectionStatus STATUS_TIMED_OUT = new ConnectionStatus(Status.ERROR, "Timed out");
+    }
 
     private final EventLogWatcher watcher;
     private final CompletableFuture<ConnectionStatus> connectionStatus;
     private final EventLogSession session;
-
 
     public EventLogConnectionUtil(String server, int port, String domain, String user, String password, String path) {
         session = new EventLogSession(server, port, domain, user, password);
