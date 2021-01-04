@@ -28,19 +28,19 @@ import java.io.StringReader;
  * @author Jitendra Kotamraju
  */
 public class EventRecord {
-    final EventLogException exception;
+    public final EventLogException exception;
 
-    final int totalSize;
-    final int headerSize;
-    final int eventOffset;
-    final int bookmarkOffset;
-    final int binXmlSize;
-    final byte[] buf;
-    final int offset;
-    final int length;
-    final int bookmarkSize;
-    final int recordIdsOffset;
-    final long recordId;
+    public final int totalSize;
+    public final int headerSize;
+    public final int eventOffset;
+    public final int bookmarkOffset;
+    public final int binXmlSize;
+    public final byte[] buf;
+    public final int offset;
+    public final int length;
+    public final int bookmarkSize;
+    public final int recordIdsOffset;
+    public final long recordId;
 
     EventRecord(byte[] buf, int offset, int length) {
         this.buf = buf;
