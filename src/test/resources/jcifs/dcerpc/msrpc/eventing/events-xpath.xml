@@ -1,0 +1,28 @@
+<QueryList>
+    <Query Id="0" Path="Security">
+        <Select Path="Security">
+            *[
+            System[(EventID='4624')]
+            and
+            EventData[Data[@Name='IpAddress']!='']
+            and
+            EventData[Data[@Name='IpAddress']!='127.0.0.1']
+            and
+            EventData[Data[@Name='IpAddress']!='::1']
+            and
+            EventData[Data[@Name='TargetUserName']!='ANONYMOUS LOGON']
+            and
+            EventData[Data[@Name='TargetDomainName']!='NT AUTHORITY']
+            ]
+        </Select>
+    </Query>
+    <Query Id="1" Path="Security">
+        <Select Path="Security">
+            *[
+            System[(EventID='4634')]
+            and
+            EventData[Data[@Name='TargetDomainName']!='NT AUTHORITY']
+            ]
+        </Select>
+    </Query>
+</QueryList>

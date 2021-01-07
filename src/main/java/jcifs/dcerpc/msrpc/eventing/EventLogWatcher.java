@@ -21,7 +21,11 @@ import jcifs.dcerpc.msrpc.eventing.even6.EvtRpcRemoteSubscriptionWaitAsync;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static jcifs.dcerpc.msrpc.eventing.even6.*;
 
@@ -38,7 +42,7 @@ public class EventLogWatcher implements Closeable {
     private static final int REQUESTED_RECORDS = 5;
 
     private final EventLogQuery query;
-    private final EventLogRecordWritten eventCallback;
+    private final Consumer<List<EventRecord>> eventCallback;
     private final String bookmark;
     private final boolean readExistingEvents;
     private final int flags;
@@ -58,7 +62,7 @@ public class EventLogWatcher implements Closeable {
      * @param query a query for the event subscription
      * @param eventCallback a callback to receive matched event
      */
-    public EventLogWatcher(EventLogQuery query, EventLogRecordWritten eventCallback) {
+    public EventLogWatcher(EventLogQuery query, Consumer<List<EventRecord>> eventCallback) {
         this(query, null, false, eventCallback);
     }
 
@@ -73,7 +77,7 @@ public class EventLogWatcher implements Closeable {
      * @param bookmark a starting position in the event log
      * @param eventCallback a callback to receive matched event
      */
-    public EventLogWatcher(EventLogQuery query, String bookmark, EventLogRecordWritten eventCallback) {
+    public EventLogWatcher(EventLogQuery query, String bookmark, Consumer<List<EventRecord>> eventCallback) {
         this(query, bookmark, false, eventCallback);
     }
 
@@ -88,7 +92,7 @@ public class EventLogWatcher implements Closeable {
      * @param eventCallback a callback to receive matched event
      */
     public EventLogWatcher(EventLogQuery query, String bookmark, boolean readExistingEvents,
-            EventLogRecordWritten eventCallback) {
+            Consumer<List<EventRecord>> eventCallback) {
         if (bookmark != null) {
             if (query.reverseDirection) {
                 throw new IllegalArgumentException();
@@ -141,7 +145,9 @@ public class EventLogWatcher implements Closeable {
             }
             if (!closed) {
                 EventLogException ee = e instanceof EventLogException ? (EventLogException) e : new EventLogException(e);
-                eventCallback.onEntryWritten(new EventRecord(ee));
+                EventRecord eventRecord = new EventRecord(ee);
+                List<EventRecord> events = Collections.singletonList(eventRecord);
+                eventCallback.accept(events);
             }
         }
     }
@@ -166,9 +172,13 @@ public class EventLogWatcher implements Closeable {
             }
             recvRecords = pull.numActualRecords;
 
-            for (int i = 0; i < pull.numActualRecords; i++) {
-                EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
-                eventCallback.onEntryWritten(record);
+            if (recvRecords > 0) {
+                List<EventRecord> events = new ArrayList<>(recvRecords);
+                for (int i = 0; i < recvRecords; i++) {
+                    EventRecord record = new EventRecord(pull.resultBuffer, pull.eventDataIndices[i], pull.eventDataSizes[i]);
+                    events.add(record);
+                }
+                eventCallback.accept(events);
             }
         }
     }

@@ -57,6 +57,7 @@ public class LogoffEvent extends Event {
                 "targetUserName='" + targetUserName + '\'' +
                 ", targetDomainName='" + targetDomainName + '\'' +
                 ", logonType=" + logonType +
+                ", logonID=" + targetLogonId +
                 '}';
     }
 }

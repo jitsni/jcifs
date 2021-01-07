@@ -18,7 +18,13 @@ package jcifs.dcerpc.msrpc.eventing;
 import jcifs.dcerpc.msrpc.eventing.EventLogQuery.PathType;
 
 import java.io.*;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -46,10 +52,10 @@ public class EventLogWatcherTest {
 
         EventLogSession session = new EventLogSession(hostname, domain, user, password);
 
-        String xpath = "*[System[EventID=4624 or EventID=4634]]";
+        String xpath = xpath();
         EventLogQuery query = new EventLogQuery("Security", PathType.LogName, xpath, session, false);
 
-        try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::eventWritten)) {
+        try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::onEvents)) {
             watcher.start();
             while (true) {
                 if (exception != null) {
@@ -61,13 +67,26 @@ public class EventLogWatcherTest {
         }
     }
 
-    private static void eventWritten(EventRecord record) {
-        if (record.exception != null) {
-            exception = record.exception;
-            return;
+    private static String xpath() {
+        return "*[System[EventID=4624 or EventID=4634]]";
+    }
+
+    private static String xpathFromFile() throws Exception {
+        URL resource = EventLogWatcherTest.class.getResource("events-xpath.xml");
+        Path path = Paths.get(resource.toURI());
+        byte[] encoded = Files.readAllBytes(path);
+        return new String(encoded, StandardCharsets.US_ASCII);
+    }
+
+    private static void onEvents(List<EventRecord> events) {
+        for(EventRecord record : events) {
+            if (record.exception != null) {
+                exception = record.exception;
+                return;
+            }
+            System.out.println(LocalTime.now() + " Received event = " + record);
+            System.out.println("\t" + record.event() + "\n");
         }
-        System.out.println(LocalTime.now() + " Received event = " + record);
-        System.out.println("\t" + record.event() + "\n");
     }
 
 }

@@ -1,10 +1,12 @@
 package jcifs.dcerpc.msrpc.eventing;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_IO;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_OK;
@@ -95,7 +97,7 @@ public class EventLogConnectionUtil implements AutoCloseable {
         watcher.close();
     }
 
-    private static class EventCallback implements EventLogRecordWritten {
+    private static class EventCallback implements Consumer<List<EventRecord>> {
         private final CompletableFuture<ConnectionStatus> status;
 
         EventCallback(CompletableFuture<ConnectionStatus> status) {
@@ -103,7 +105,8 @@ public class EventLogConnectionUtil implements AutoCloseable {
         }
 
         @Override
-        public void onEntryWritten(EventRecord record) {
+        public void accept(List<EventRecord> events) {
+            EventRecord record = events.get(0);
             if (record.exception != null) {
                 status.completeExceptionally(record.exception);
             } else {

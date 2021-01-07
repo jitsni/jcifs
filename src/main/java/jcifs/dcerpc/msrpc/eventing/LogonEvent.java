@@ -109,6 +109,7 @@ public class LogonEvent extends Event {
                 ", logonType=" + logonType +
                 ", ipAddress='" + ipAddress + '\'' +
                 ", ipPort=" + ipPort +
+                ", logonID=" + targetLogonId +
                 '}';
     }
 }
