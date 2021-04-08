@@ -63,9 +63,11 @@ public class BinXmlParser {
     private static final byte UINT32_TYPE = 0x08;
     private static final byte INT64_TYPE = 0x09;
     private static final byte UINT64_TYPE = 0x0a;
+    private static final byte BOOL_TYPE = 0x0d;
     private static final byte GUID_TYPE = 0x0f;
     private static final byte FILE_TIME_TYPE = 0x11;
     private static final byte SID_TYPE = 0x13;
+    private static final byte HEX_INT32_TYPE = 0x14;
     private static final byte HEX_INT64_TYPE = 0x15;
     private static final byte BIN_XML_TYPE = 0x21;
 
@@ -176,6 +178,9 @@ public class BinXmlParser {
             case UINT64_TYPE :
                 entry.setValue(Encdec.dec_uint64le(buf, offset));
                 break;
+            case BOOL_TYPE :
+                entry.setValue(bool(buf, offset));
+                break;
             case GUID_TYPE :
                 String guid = guid(buf, offset);
                 entry.setValue(guid);
@@ -183,6 +188,10 @@ public class BinXmlParser {
             case FILE_TIME_TYPE :
                 String time = fileTime(buf, offset);
                 entry.setValue(time);
+                break;
+            case HEX_INT32_TYPE :
+                String hex32 = hexInt32(buf, offset);
+                entry.setValue(hex32);
                 break;
             case HEX_INT64_TYPE :
                 String hex = hexInt64(buf, offset);
@@ -660,6 +669,11 @@ public class BinXmlParser {
         return "0x" + Long.toHexString(value);
     }
 
+    private String hexInt32(byte[] buf, int offset) {
+        int value = Encdec.dec_uint32le(buf, offset);
+        return "0x" + Integer.toHexString(value);
+    }
+
     /* MS-DTYP spec
        2.3.4.2 GUID--Packet Representation
 
@@ -695,6 +709,10 @@ public class BinXmlParser {
         sb.append("}");
 
         return sb.toString().toUpperCase();
+    }
+
+    private String bool(byte[] buf, int offset) {
+        return buf[offset] == 0x00 ? "true" : "false";
     }
 
     private String fileTime(byte[] buf, int offset) {
