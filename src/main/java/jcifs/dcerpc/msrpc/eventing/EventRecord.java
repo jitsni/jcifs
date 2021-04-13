@@ -42,6 +42,8 @@ public class EventRecord {
     public final int recordIdsOffset;
     public final long recordId;
 
+    public final Event event;
+
     EventRecord(byte[] buf, int offset, int length) {
         this.buf = buf;
         this.offset = offset;
@@ -55,6 +57,7 @@ public class EventRecord {
         bookmarkSize = Encdec.dec_uint32le(buf, offset + bookmarkOffset);
         recordIdsOffset = Encdec.dec_uint32le(buf, offset + bookmarkOffset + 20);
         recordId = Encdec.dec_uint64le(buf, offset + bookmarkOffset + recordIdsOffset);
+        event = parseEvent();
 
         exception = null;
     }
@@ -74,6 +77,8 @@ public class EventRecord {
         bookmarkSize = 0;
         recordIdsOffset = 0;
         recordId = 0;
+
+        event = null;
     }
 
     int binXmlOffset() {
@@ -81,6 +86,10 @@ public class EventRecord {
     }
 
     public Event event() {
+        return event;
+    }
+
+    private Event parseEvent() {
         BinXmlParser parser = new BinXmlParser(buf, binXmlOffset(), binXmlSize);
         String xml = parser.xml();
         try(Reader reader = new StringReader(xml)) {

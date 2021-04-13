@@ -21,6 +21,7 @@ import jcifs.dcerpc.msrpc.eventing.even6.EvtRpcRemoteSubscriptionWaitAsync;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,9 +44,11 @@ public class EventLogWatcher implements Closeable {
 
     private final EventLogQuery query;
     private final Consumer<List<EventRecord>> eventCallback;
+    private final Consumer<EventLogProgress> progressCallback;
     private final String bookmark;
     private final boolean readExistingEvents;
     private final int flags;
+    private final EventLogProgress progress;
 
     private EvtRpcRegisterRemoteSubscription subscription;
     private int requestedRecords = REQUESTED_RECORDS;
@@ -63,7 +66,11 @@ public class EventLogWatcher implements Closeable {
      * @param eventCallback a callback to receive matched event
      */
     public EventLogWatcher(EventLogQuery query, Consumer<List<EventRecord>> eventCallback) {
-        this(query, null, false, eventCallback);
+        this(query, null, false, eventCallback, null);
+    }
+
+    public EventLogWatcher(EventLogQuery query, Consumer<List<EventRecord>> eventCallback, Consumer<EventLogProgress> progressCallback) {
+        this(query, null, false, eventCallback, progressCallback);
     }
 
     /**
@@ -78,7 +85,12 @@ public class EventLogWatcher implements Closeable {
      * @param eventCallback a callback to receive matched event
      */
     public EventLogWatcher(EventLogQuery query, String bookmark, Consumer<List<EventRecord>> eventCallback) {
-        this(query, bookmark, false, eventCallback);
+        this(query, bookmark, false, eventCallback, null);
+    }
+
+    public EventLogWatcher(EventLogQuery query, String bookmark, boolean readExistingEvents,
+                           Consumer<List<EventRecord>> eventCallback) {
+        this(query, bookmark, readExistingEvents, eventCallback, null);
     }
 
     /**
@@ -90,9 +102,10 @@ public class EventLogWatcher implements Closeable {
      * @param bookmark a starting position in the event log
      * @param readExistingEvents whether to read the events that already exist in the event log
      * @param eventCallback a callback to receive matched event
+     * @param progressCallback a callback to receive event log events fetching status
      */
     public EventLogWatcher(EventLogQuery query, String bookmark, boolean readExistingEvents,
-            Consumer<List<EventRecord>> eventCallback) {
+            Consumer<List<EventRecord>> eventCallback, Consumer<EventLogProgress> progressCallback) {
         if (bookmark != null) {
             if (query.reverseDirection) {
                 throw new IllegalArgumentException();
@@ -104,6 +117,8 @@ public class EventLogWatcher implements Closeable {
         this.bookmark = bookmark;
         this.readExistingEvents = readExistingEvents;
         this.eventCallback = eventCallback;
+        this.progress = new EventLogProgress();
+        this.progressCallback = new NoExceptionProgressCallback(progressCallback);
         this.flags = flags();
     }
 
@@ -132,6 +147,9 @@ public class EventLogWatcher implements Closeable {
             }
 
             while (!closed) {
+                progress.lastSubscriptionTime = Instant.now().toEpochMilli();
+                progressCallback.accept(progress);
+
                 EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
                 query.session.sendWait(wait, waitTimeout);
                 if (!closed && wait.retVal != 0) {
@@ -148,6 +166,9 @@ public class EventLogWatcher implements Closeable {
                 EventRecord eventRecord = new EventRecord(ee);
                 List<EventRecord> events = Collections.singletonList(eventRecord);
                 eventCallback.accept(events);
+
+                progress.connectionError =  ee;
+                progressCallback.accept(progress);
             }
         }
     }
@@ -164,6 +185,8 @@ public class EventLogWatcher implements Closeable {
         int recvRecords = requestedRecords;
 
         while (!closed && recvRecords == requestedRecords) {
+            progress.lastPullTime = Instant.now().toEpochMilli();
+
             EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
                     subscription.handle, requestedRecords, pullTimeout, 0);
             query.session.sendPull(pull, pullTimeout + 1000);
@@ -179,7 +202,18 @@ public class EventLogWatcher implements Closeable {
                     events.add(record);
                 }
                 eventCallback.accept(events);
+
+                // Update the event log progress
+                updateProgress(events);
             }
+        }
+    }
+
+    private void updateProgress(List<EventRecord> events) {
+        Event last = events.get(events.size() - 1).event();
+        if (last != null) {
+            progress.lastEventTimeCreated = last.timeCreated;
+            progress.lastEventRecordId = last.eventRecordId;
         }
     }
 
@@ -220,6 +254,25 @@ public class EventLogWatcher implements Closeable {
             }
 
             query.session.close();
+        }
+    }
+
+    private static class NoExceptionProgressCallback implements Consumer<EventLogProgress> {
+        private final Consumer<EventLogProgress> progressCallback;
+
+        private NoExceptionProgressCallback(Consumer<EventLogProgress> progressCallback) {
+            this.progressCallback = progressCallback;
+        }
+
+        @Override
+        public void accept(EventLogProgress progress) {
+            if (progressCallback != null) {
+                try {
+                    progressCallback.accept(progress);
+                } catch (Exception e) {
+                    // ignore the exception
+                }
+            }
         }
     }
 

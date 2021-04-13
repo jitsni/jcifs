@@ -55,7 +55,7 @@ public class EventLogWatcherTest {
         String xpath = xpath();
         EventLogQuery query = new EventLogQuery("Security", PathType.LogName, xpath, session, false);
 
-        try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::onEvents)) {
+        try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::onEvents, EventLogWatcherTest::onProgress)) {
             watcher.start();
             while (true) {
                 if (exception != null) {
@@ -87,6 +87,10 @@ public class EventLogWatcherTest {
             System.out.println(LocalTime.now() + " Received event = " + record);
             System.out.println("\t" + record.event() + "\n");
         }
+    }
+
+    private static void onProgress(EventLogProgress progress) {
+        System.out.println(progress);
     }
 
 }
