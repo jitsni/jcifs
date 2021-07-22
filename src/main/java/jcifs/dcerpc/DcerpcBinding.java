@@ -37,6 +37,7 @@ public class DcerpcBinding {
         INTERFACES.put("netdfs", netdfs.getSyntax());
         INTERFACES.put("epm", epm.getSyntax());
         INTERFACES.put("even6", even6.getSyntax());
+        INTERFACES.put("eventlog", eventlog.getSyntax());
     }
 
     public static void addInterface(String name, String syntax)

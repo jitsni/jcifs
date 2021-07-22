@@ -123,33 +123,51 @@ public class NdrBuffer {
     }
     public void enc_ndr_short(int s) {
         align(2);
+        enc_ndr_small_noalign(s);
+    }
+    public void enc_ndr_small_noalign(int s) {
         Encdec.enc_uint16le((short)s, buf, index);
         advance(2);
     }
     public int dec_ndr_short() {
         align(2);
+        return dec_ndr_short_noalign();
+    }
+    public int dec_ndr_short_noalign() {
         int val = Encdec.dec_uint16le(buf, index);
         advance(2);
         return val;
     }
     public void enc_ndr_long(int l) {
         align(4);
+        enc_ndr_long_noalign(l);
+    }
+    public void enc_ndr_long_noalign(int l) {
         Encdec.enc_uint32le(l, buf, index);
         advance(4);
     }
     public int dec_ndr_long() {
         align(4);
+        return dec_ndr_long_noalign();
+    }
+    public int dec_ndr_long_noalign() {
         int val = Encdec.dec_uint32le(buf, index);
         advance(4);
         return val;
     }
     public void enc_ndr_hyper(long h) {
         align(8);
+        enc_ndr_hyper_noalign(h);
+    }
+    public void enc_ndr_hyper_noalign(long h) {
         Encdec.enc_uint64le(h, buf, index);
         advance(8);
     }
     public long dec_ndr_hyper() {
         align(8);
+        return dec_ndr_hyper_noalign();
+    }
+    public long dec_ndr_hyper_noalign() {
         long val = Encdec.dec_uint64le(buf, index);
         advance(8);
         return val;
@@ -158,6 +176,9 @@ public class NdrBuffer {
     /* double */
     public void enc_ndr_string(String s) {
         align(4);
+        enc_ndr_string_noalign(s);
+    }
+    public void enc_ndr_string_noalign(String s) {
         int i = index;
         int len = s.length();
         Encdec.enc_uint32le(len + 1, buf, i); i += 4;
@@ -174,6 +195,9 @@ public class NdrBuffer {
     }
     public String dec_ndr_string() throws NdrException {
         align(4);
+        return dec_ndr_string_noalign();
+    }
+    public String dec_ndr_string_noalign() throws NdrException {
         int i = index;
         String val = null;
         int len = Encdec.dec_uint32le(buf, i);
@@ -191,6 +215,68 @@ public class NdrBuffer {
         advance(i - index);
         return val;
     }
+
+    /**
+     * Encode a string into unicode format. It's not UNISTR2 format, doesn't
+     * include length and so on. Just string in UnicodeLittleUnmarked format.
+     * Been used by eventlog APIs.
+     *
+     * @param s
+     *            The string that need to encode.
+     */
+    public void enc_ndr_unistring(String s) {
+        align(2);
+        enc_ndr_unistring_noalign(s);
+    }
+    public void enc_ndr_unistring_noalign(String s) {
+        int i = index;
+        int len = s.length();
+        try {
+            System.arraycopy(s.getBytes("UnicodeLittleUnmarked"), 0, buf, i,
+                    len * 2);
+        } catch (UnsupportedEncodingException uee) {
+        }
+        i += len * 2;
+        buf[i++] = (byte) '\0';
+        buf[i++] = (byte) '\0';
+        advance(i - index);
+    }
+
+    /**
+     * Decode a unicode string. It's not UNISTR2 format, doesn't include length
+     * and so on. Just string in UnicodeLittleUnmarked format. Been used by
+     * eventlog APIs.
+     *
+     * @return decoded java string object.
+     */
+    public String dec_ndr_unistring() throws NdrException {
+        align(2);
+        return dec_ndr_unistring_noalign();
+    }
+    public String dec_ndr_unistring_noalign() throws NdrException {
+        int i = index;
+        String val = null;
+        int tmp;
+        int len = 0;
+        do {
+            tmp = dec_ndr_short();
+            len++;
+        } while (tmp != 0);
+        if (len != 0) {
+            len--;
+            int size = len * 2;
+            try {
+                if (size < 0 || size > 0xFFFF)
+                    throw new NdrException(NdrException.INVALID_CONFORMANCE);
+                val = new String(buf, i, size, "UnicodeLittleUnmarked");
+                i += size + 2;
+            } catch (UnsupportedEncodingException uee) {
+            }
+        }
+        advance(i - index);
+        return val;
+    }
+
     private int getDceReferent(Object obj) {
         Entry e;
 

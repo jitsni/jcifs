@@ -33,6 +33,7 @@ public interface NtStatus {
     public static final int NT_STATUS_INVALID_PARAMETER = 0xC000000d;
     public static final int NT_STATUS_NO_SUCH_DEVICE = 0xC000000e;
     public static final int NT_STATUS_NO_SUCH_FILE = 0xC000000f;
+    public static final int NT_STATUS_END_OF_FILE = 0xC0000011;
     public static final int NT_STATUS_MORE_PROCESSING_REQUIRED = 0xC0000016;
     public static final int NT_STATUS_ACCESS_DENIED = 0xC0000022;
     public static final int NT_STATUS_BUFFER_TOO_SMALL = 0xC0000023;
@@ -97,6 +98,7 @@ public interface NtStatus {
         NT_STATUS_INVALID_PARAMETER,
         NT_STATUS_NO_SUCH_DEVICE,
         NT_STATUS_NO_SUCH_FILE,
+        NT_STATUS_END_OF_FILE,
         NT_STATUS_MORE_PROCESSING_REQUIRED,
         NT_STATUS_ACCESS_DENIED,
         NT_STATUS_BUFFER_TOO_SMALL,
@@ -162,6 +164,7 @@ public interface NtStatus {
         "The parameter is incorrect.",
         "The system cannot find the file specified.",
         "The system cannot find the file specified.",
+        "Reached end of file.",
         "More data is available.",
         "Access is denied.",
         "The data area passed to a system call is too small.",

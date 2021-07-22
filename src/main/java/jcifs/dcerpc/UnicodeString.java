@@ -27,20 +27,24 @@ public class UnicodeString extends rpc.unicode_string {
         this.zterm = zterm;
     }
     public UnicodeString(rpc.unicode_string rus, boolean zterm) {
-        this.length = rus.length;
-        this.maximum_length = rus.maximum_length;
-        this.buffer = rus.buffer;
+        this.length = rus == null ? 0 : rus.length;
+        this.maximum_length = rus == null ? 0 : rus.maximum_length;
+        this.buffer = rus == null ? null : rus.buffer;
         this.zterm = zterm;
     }
 
     public UnicodeString(String str, boolean zterm) {
         this.zterm = zterm;
 
-        int len = str.length();
+        int len = str == null ? 0 : str.length();
         int zt = zterm ? 1 : 0;
 
         length = maximum_length = (short)((len + zt) * 2);
-        buffer = new short[len + zt];
+        if (str != null) {
+            buffer = new short[len + zt];
+        } else {
+            buffer = null;
+        }
 
         int i;
         for (i = 0; i < len; i++) {
