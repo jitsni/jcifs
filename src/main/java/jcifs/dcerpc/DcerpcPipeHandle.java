@@ -21,22 +21,27 @@ package jcifs.dcerpc;
 
 import java.net.*;
 import java.io.*;
+import java.util.logging.Logger;
 
-import jcifs.dcerpc.ndr.NdrBuffer;
+import jcifs.dcerpc.msrpc.NtlmSecurityProvider;
 import jcifs.smb.*;
 import jcifs.util.*;
 
 public class DcerpcPipeHandle extends DcerpcHandle {
+    private static final Logger LOGGER = Logger.getLogger(DcerpcHandle.class.getName());
 
     SmbNamedPipe pipe;
     SmbFileInputStream in = null;
     SmbFileOutputStream out = null;
     boolean isStart = true;
+    private final NtlmPasswordAuthentication auth;
+    private boolean evenAuthentication = true;
 
     public DcerpcPipeHandle(String url,
                 NtlmPasswordAuthentication auth)
                 throws UnknownHostException, MalformedURLException, DcerpcException {
         binding = DcerpcHandle.parseBinding(url);
+        this.auth = auth;
         url = "smb://" + binding.server + "/IPC$/" + binding.endpoint.substring(6);
 
         String params = "", server, address;
@@ -49,10 +54,27 @@ public class DcerpcPipeHandle extends DcerpcHandle {
         if (params.length() > 0)
             url += "?" + params.substring(1);
 
-        pipe = new SmbNamedPipe(url,
-                /* This 0x20000 bit is going to get chopped! */
-                (0x2019F << 16) | SmbNamedPipe.PIPE_TYPE_RDWR | SmbNamedPipe.PIPE_TYPE_DCE_TRANSACT,
-                auth);
+        // Let us not use additional SMB Pipe protocol for MS-EVEN
+        // (don't know how to send AUTH3 packet)
+        int pipeType = url.endsWith("/eventlog")
+            ? SmbNamedPipe.PIPE_TYPE_RDONLY
+            /* This 0x20000 bit is going to get chopped! */
+            : (0x2019F << 16) | SmbNamedPipe.PIPE_TYPE_RDWR | SmbNamedPipe.PIPE_TYPE_DCE_TRANSACT;
+
+        pipe = new SmbNamedPipe(url, pipeType, auth);
+    }
+
+    @Override
+    public void bind() throws DcerpcException, IOException {
+        if (auth != null && evenAuthentication) {
+            LOGGER.info("Installing dce/rpc security provier");
+            setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, true));
+        }
+        super.bind();
+        if (auth != null && evenAuthentication) {
+            DcerpcMessage auth3 = new Auth3();
+            send(auth3);
+        }
     }
 
     protected void doSendFragment(byte[] buf,
