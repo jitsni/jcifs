@@ -1,5 +1,7 @@
 package jcifs.dcerpc.msrpc.eventing;
 
+import jcifs.dcerpc.DcerpcException;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -8,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import static jcifs.dcerpc.DcerpcError.DCERPC_FAULT_ACCESS_DENIED;
+import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_AUTH;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_IO;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_OK;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_TIMED_OUT;
@@ -22,6 +26,8 @@ public class EventLogConnectionUtil implements AutoCloseable {
 
     public static class ConnectionStatus {
         public static final ConnectionStatus STATUS_OK = new ConnectionStatus(Status.OK, null);
+        public static final ConnectionStatus STATUS_AUTH =
+                new ConnectionStatus(Status.ERROR, "Authentication error");
         public static final ConnectionStatus STATUS_IO = new ConnectionStatus(Status.ERROR, "I/O error");
         public static final ConnectionStatus STATUS_UNKNOWN = new ConnectionStatus(Status.ERROR, "Unknown error");
         public static final ConnectionStatus STATUS_TIMED_OUT = new ConnectionStatus(Status.ERROR, "Timed out");
@@ -82,8 +88,13 @@ public class EventLogConnectionUtil implements AutoCloseable {
         } catch (TimeoutException e) {
             status = STATUS_TIMED_OUT;
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof EventLogException && e.getCause().getCause() instanceof IOException) {
-                status = STATUS_IO;
+            if (e.getCause() instanceof EventLogException) {
+                if (e.getCause().getCause() instanceof DcerpcException) {
+                    DcerpcException dce = (DcerpcException) e.getCause().getCause();
+                    status = dce.getErrorCode() == DCERPC_FAULT_ACCESS_DENIED ? STATUS_AUTH : STATUS_IO;
+                } else if (e.getCause().getCause() instanceof IOException) {
+                    status = STATUS_IO;
+                }
             }
         } catch (Exception e) {
             // ignore
