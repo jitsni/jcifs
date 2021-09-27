@@ -113,7 +113,7 @@ public class Event {
         String computer = null;
         Map<String, String> eventData = new HashMap<>();
 
-        XMLStreamReader sr = XMLInputFactory.newInstance().createXMLStreamReader(reader);
+        XMLStreamReader sr = XMLStreamReaderFactory.create(reader);
         while (sr.hasNext()) {
             int eventType = sr.next();
             if (eventType == START_ELEMENT) {
@@ -238,6 +238,59 @@ public class Event {
         }
         assert sr.getEventType() == END_ELEMENT;
         return eventData;
+    }
+
+    private static abstract class XMLStreamReaderFactory {
+        private static final String WSTX_INPUT_FACTORY = "com.ctc.wstx.stax.WstxInputFactory";
+
+        private static final XMLStreamReaderFactory factory;
+        static {
+            XMLInputFactory xif = XMLInputFactory.newInstance();
+            factory = xif.getClass().getName().equals(WSTX_INPUT_FACTORY)
+                    ? new Woodstox(xif)
+                    : new Default();
+        }
+
+        private static XMLStreamReader create(Reader reader) throws XMLStreamException {
+            return factory.doCreate(reader);
+        }
+
+        abstract XMLStreamReader doCreate(Reader reader) throws XMLStreamException;
+
+        /**
+         * Default {@link XMLStreamReaderFactory} implementation
+         * that can work with any {@link XMLInputFactory}.
+         *
+         * <p>
+         * {@link XMLInputFactory} is not required to be thread-safe, but
+         * if the create method on this implementation is synchronized,
+         * it may run into some race condition. Hence, using a XMLInputFactory per thread.
+         */
+        private static final class Default extends XMLStreamReaderFactory {
+            private final ThreadLocal<XMLInputFactory> xif = ThreadLocal.withInitial(XMLInputFactory::newInstance);
+
+            @Override
+            XMLStreamReader doCreate(Reader reader) throws XMLStreamException {
+                return xif.get().createXMLStreamReader(reader);
+            }
+        }
+
+        /**
+         * Handles Woodstox's XIF,
+         * Woodstox {@link XMLInputFactory} is thread safe.
+         */
+        private static final class Woodstox extends XMLStreamReaderFactory {
+            private final XMLInputFactory xif;
+
+            Woodstox(XMLInputFactory xif) {
+                this.xif = xif;
+            }
+
+            @Override
+            XMLStreamReader doCreate(Reader reader) throws XMLStreamException {
+                return xif.createXMLStreamReader(reader);
+            }
+        }
     }
 
 }
