@@ -148,7 +148,6 @@ public class EventLogWatcher implements Closeable {
 
             while (!closed) {
                 progress.lastSubscriptionTime = Instant.now().toEpochMilli();
-                progressCallback.accept(progress);
 
                 EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
                 query.session.sendWait(wait, waitTimeout);
@@ -206,6 +205,8 @@ public class EventLogWatcher implements Closeable {
                 // Update the event log progress
                 updateProgress(events);
             }
+
+            progressCallback.accept(progress);
         }
     }
 
