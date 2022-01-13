@@ -17,7 +17,7 @@ package jcifs.dcerpc.msrpc.eventing;
 
 public class EventLogProgress {
     public EventLogException connectionError;
-    public int lastEventRecordId;
+    public long lastEventRecordId;
     public long lastSubscriptionTime;
     public long lastPullTime;
     public String lastEventTimeCreated;

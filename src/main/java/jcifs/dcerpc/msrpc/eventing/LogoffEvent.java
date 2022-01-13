@@ -38,7 +38,7 @@ public class LogoffEvent extends Event {
     public final int logonType;
 
     protected LogoffEvent(int eventId, int version, int level, int task, int opcode, String keywords,
-                String timeCreated, int eventRecordId, String activityId, int processId, int threadId,
+                String timeCreated, long eventRecordId, String activityId, int processId, int threadId,
                 String channel, String computer, Map<String, String> eventData) {
 
         super(eventId, version, level, task, opcode, keywords, timeCreated, eventRecordId, activityId,

@@ -55,7 +55,7 @@ public class Event {
     public final int opcode;
     public final String keywords;
     public final String timeCreated;
-    public final int eventRecordId;
+    public final long eventRecordId;
     public final String activityId;
     public final int processId;
     public final int threadId;
@@ -63,7 +63,7 @@ public class Event {
     public final String computer;
 
     protected Event(int eventId, int version, int level, int task, int opcode, String keywords, String timeCreated,
-                int eventRecordId, String activityId, int processId, int threadId, String channel, String computer) {
+                long eventRecordId, String activityId, int processId, int threadId, String channel, String computer) {
 
         this.eventId = eventId;
         this.version = version;
@@ -105,7 +105,7 @@ public class Event {
         int opcode = -1;
         String keywords = null;
         String timeCreated = null;
-        int eventRecordId = -1;
+        long eventRecordId = -1;
         String activityId = null;
         int processId = -1;
         int threadId = -1;
@@ -141,7 +141,7 @@ public class Event {
                         timeCreated = time.get("SystemTime");
                         break;
                     case "EventRecordID":
-                        eventRecordId = parseIntegerText(sr);
+                        eventRecordId = parseLongText(sr);
                         break;
                     case "Correlation":
                         Map<String, String> correlation = parseAttributes(sr);
@@ -196,6 +196,17 @@ public class Event {
         assert eventType == CHARACTERS;
         String text = sr.getText();
         int value = Integer.parseInt(text);
+        sr.next();
+        assert sr.getEventType() == END_ELEMENT;
+        return value;
+    }
+
+    private static long parseLongText(XMLStreamReader sr) throws XMLStreamException {
+        assert sr.getEventType() == START_ELEMENT;
+        int eventType = sr.next();
+        assert eventType == CHARACTERS;
+        String text = sr.getText();
+        long value = Long.parseUnsignedLong(text);
         sr.next();
         assert sr.getEventType() == END_ELEMENT;
         return value;
