@@ -11,11 +11,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import static jcifs.dcerpc.DcerpcError.DCERPC_FAULT_ACCESS_DENIED;
-import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_AUTH;
-import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_IO;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_OK;
-import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_TIMED_OUT;
-import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_UNKNOWN;
 
 public class EventLogConnectionUtil implements AutoCloseable {
 
@@ -25,20 +21,19 @@ public class EventLogConnectionUtil implements AutoCloseable {
     }
 
     public static class ConnectionStatus {
-        public static final ConnectionStatus STATUS_OK = new ConnectionStatus(Status.OK, null);
-        public static final ConnectionStatus STATUS_AUTH =
-                new ConnectionStatus(Status.ERROR, "Authentication error");
-        public static final ConnectionStatus STATUS_IO = new ConnectionStatus(Status.ERROR, "I/O error");
-        public static final ConnectionStatus STATUS_UNKNOWN = new ConnectionStatus(Status.ERROR, "Unknown error");
-        public static final ConnectionStatus STATUS_TIMED_OUT = new ConnectionStatus(Status.ERROR, "Timed out");
+        public static final ConnectionStatus STATUS_OK = new ConnectionStatus(Status.OK, null, null);
+        public static final ConnectionStatus STATUS_IO = new ConnectionStatus(Status.ERROR, "I/O error", null);
 
         public final Status status;
         public final String errorMsg;
+        public final Exception ex;
 
-        private ConnectionStatus(Status status, String errorMsg) {
+        private ConnectionStatus(Status status, String errorMsg, Exception ex) {
             this.status = status;
             this.errorMsg = errorMsg;
+            this.ex = ex;
         }
+
         @Override
         public String toString() {
             return errorMsg == null ? status.toString() : status + ", " + errorMsg;
@@ -80,24 +75,30 @@ public class EventLogConnectionUtil implements AutoCloseable {
     }
 
     public ConnectionStatus testConnection(long timeout, TimeUnit unit) {
-        ConnectionStatus status = STATUS_UNKNOWN;
+        ConnectionStatus status;
 
         try {
             watcher.start();
             status = connectionStatus.get(timeout, unit);
         } catch (TimeoutException e) {
-            status = STATUS_TIMED_OUT;
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof EventLogException) {
-                if (e.getCause().getCause() instanceof DcerpcException) {
-                    DcerpcException dce = (DcerpcException) e.getCause().getCause();
-                    status = dce.getErrorCode() == DCERPC_FAULT_ACCESS_DENIED ? STATUS_AUTH : STATUS_IO;
-                } else if (e.getCause().getCause() instanceof IOException) {
-                    status = STATUS_IO;
+            status = new ConnectionStatus(Status.ERROR, "Timed out", e);
+        } catch (Exception e) {
+            status = new ConnectionStatus(Status.ERROR, "Unknown error", e);
+
+            if (e instanceof ExecutionException) {
+                if (e.getCause() instanceof EventLogException) {
+                    if (e.getCause().getCause() instanceof IOException) {
+                        status = new ConnectionStatus(Status.ERROR, "I/O error", e);
+
+                        if (e.getCause().getCause() instanceof DcerpcException) {
+                            DcerpcException dce = (DcerpcException) e.getCause().getCause();
+                            if (dce.getErrorCode() == DCERPC_FAULT_ACCESS_DENIED) {
+                                status = new ConnectionStatus(Status.ERROR, "Access denied", e);
+                            }
+                        }
+                    }
                 }
             }
-        } catch (Exception e) {
-            // ignore
         }
 
         return status;
