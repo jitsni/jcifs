@@ -239,9 +239,7 @@ public class Event {
             int eventType = sr.next();
             if (eventType == START_ELEMENT && sr.getLocalName().equals("Data")) {
                 String attribute = sr.getAttributeValue(0);
-                eventType = sr.next();
-                assert eventType == CHARACTERS;
-                String value = sr.getText();
+                String value = sr.getElementText();
                 eventData.put(attribute, value);
             } else if (eventType == END_ELEMENT && sr.getLocalName().equals("EventData")) {
                 break;
