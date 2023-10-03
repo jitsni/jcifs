@@ -1,3 +1,18 @@
+/**
+ * Copyright 2020 Jitendra Kotamraju.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package jcifs.dcerpc.msrpc.eventing;
 
 import jcifs.dcerpc.DcerpcException;
@@ -9,11 +24,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static jcifs.dcerpc.DcerpcError.DCERPC_FAULT_ACCESS_DENIED;
 import static jcifs.dcerpc.msrpc.eventing.EventLogConnectionUtil.ConnectionStatus.STATUS_OK;
 
 public class EventLogConnectionUtil implements AutoCloseable {
+
+    private static final Logger LOGGER = Logger.getLogger(EventLogConnectionUtil.class.getName());
 
     public enum Status {
         OK,
@@ -44,8 +63,10 @@ public class EventLogConnectionUtil implements AutoCloseable {
     private final EventLogWatcher watcher;
     private final CompletableFuture<ConnectionStatus> connectionStatus;
     private final EventLogSession session;
+    private final String server;
 
     public EventLogConnectionUtil(String server, int port, String domain, String user, String password, String path) {
+        this.server = server;
         session = new EventLogSession(server, port, domain, user, password);
         String xpath = "*";
         EventLogQuery query = new EventLogQuery(path, EventLogQuery.PathType.LogName, xpath, session, false);
@@ -83,6 +104,7 @@ public class EventLogConnectionUtil implements AutoCloseable {
         } catch (TimeoutException e) {
             status = new ConnectionStatus(Status.ERROR, "Timed out", e);
         } catch (Exception e) {
+            LOGGER.log(Level.INFO, e, () -> "Error connecting to server: " + server);
             status = new ConnectionStatus(Status.ERROR, "Unknown error", e);
 
             if (e instanceof ExecutionException) {

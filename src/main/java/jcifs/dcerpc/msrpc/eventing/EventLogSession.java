@@ -22,6 +22,9 @@ import jcifs.smb.NtlmPasswordAuthentication;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.logging.Logger;
+
+import static jcifs.dcerpc.msrpc.eventing.EventLogWatcher.RPC_CLEAR_TIMEOUT;
 
 /*
  * Used to access the Event Log service on a remote computer so you can manage and gather
@@ -32,7 +35,9 @@ import java.net.SocketTimeoutException;
  * @author Jitendra Kotamraju
  */
 public class EventLogSession implements Closeable {
-    private final String server;
+    private static final Logger LOGGER = Logger.getLogger(EventLogSession.class.getName());
+
+    final String server;
     private final int port;
     private final boolean encrypted;
     private final NtlmPasswordAuthentication auth;
@@ -159,9 +164,16 @@ public class EventLogSession implements Closeable {
                 waitHandle.sendrecv(msg);
                 break;
             } catch (SocketTimeoutException se) {
+                LOGGER.info("Wait connection socket read timed out for " + server);
                 // No new events within socket read timeout. Try again with a new connection
                 waitHandle.close();
                 waitHandle = null;
+                try {
+                    LOGGER.info("Waiting to clear out existing EvtRpcRemoteSubscriptionWaitAsync RPC for " + server);
+                    Thread.sleep(RPC_CLEAR_TIMEOUT);
+                } catch (Exception e) {
+                    // no-op
+                }
             }
         }
     }
