@@ -153,8 +153,8 @@ public class EventLogWatcher implements Closeable {
     }
 
     public void start() {
-        String msg = String.format("EventLogWatcher periodic polling=%s, polling fequency=%d, wait timeout=%d, pull timeout=%d, requested records=%d",
-                periodicPolling, pollingFrequency, waitTimeout, pullTimeout, requestedRecords);
+        String msg = String.format("EventLogWatcher periodic polling=%s, polling fequency=%d, wait timeout=%d, pull timeout=%d, requested records=%d, xpath=%s",
+                periodicPolling, pollingFrequency, waitTimeout, pullTimeout, requestedRecords, query.query);
         LOGGER.info(msg);
         new Thread(this::run, "EventLogWatcher-" + threadNo.getAndIncrement()).start();
     }
@@ -172,8 +172,10 @@ public class EventLogWatcher implements Closeable {
                 progress.lastSubscriptionTime = Instant.now().toEpochMilli();
 
                 if (periodicPolling) {
+                    LOGGER.fine("Sleep " + pollingFrequency + " ms");
                     Thread.sleep(pollingFrequency);
                 } else {
+                    LOGGER.fine("Sending EvtRpcRemoteSubscriptionWaitAsync");
                     EvtRpcRemoteSubscriptionWaitAsync wait = new EvtRpcRemoteSubscriptionWaitAsync(subscription.handle);
                     query.session.sendWait(wait, waitTimeout);
                     if (!closed && wait.retVal != 0) {
@@ -213,6 +215,7 @@ public class EventLogWatcher implements Closeable {
         while (!closed && recvRecords == requestedRecords) {
             progress.lastPullTime = Instant.now().toEpochMilli();
 
+            LOGGER.fine("Sending EvtRpcRemoteSubscriptionNext");
             EvtRpcRemoteSubscriptionNext pull = new EvtRpcRemoteSubscriptionNext(
                     subscription.handle, requestedRecords, pullTimeout, 0);
             query.session.sendPull(pull, pullTimeout + 2000);       // 2 secs more for socket read than rpc
@@ -220,6 +223,8 @@ public class EventLogWatcher implements Closeable {
                 throw new EventLogException("EvtRpcRemoteSubscriptionNext return value = " + pull.retVal + " for " + query.session.server);
             }
             recvRecords = pull.numActualRecords;
+            LOGGER.fine("recvRecords = " + recvRecords);
+            LOGGER.fine("-------------" );
 
             if (recvRecords > 0) {
                 List<EventRecord> events = new ArrayList<>(recvRecords);
@@ -261,6 +266,7 @@ public class EventLogWatcher implements Closeable {
     @Override
     public void close() {
         if (!closed) {
+            LOGGER.info("Closing EventLogWatcher");
             closed = true;
 
             if (!ioException) {

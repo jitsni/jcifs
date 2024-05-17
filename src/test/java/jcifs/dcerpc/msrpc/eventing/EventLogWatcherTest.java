@@ -27,19 +27,39 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 /*
  * @author Jitendra Kotamraju
  */
 public class EventLogWatcherTest {
+    private static final Logger LOGGER = Logger.getLogger(EventLogWatcherTest.class.getName());
 
     private static volatile Exception exception;
 
     public static void main(String... args) throws Exception {
         if (args.length != 1) {
-            System.out.println("java EventingTest properties-file");
+            System.out.println("java EventLogWatcherTest properties-file");
             return;
         }
+
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tc] %5$s %n");
+        Logger logger1 = java.util.logging.Logger.getLogger(EventLogWatcherTest.class.getPackage().getName());
+        Logger logger2 = java.util.logging.Logger.getLogger("jcifs.dcerpc.DcerpcTcpHandle");
+        Logger[] loggers = { logger1, logger2 };
+        for(Logger logger : loggers) {
+            logger.setUseParentHandlers(false);
+            logger.setLevel(Level.ALL);
+            Handler console = new ConsoleHandler();
+            console.setFormatter(new SimpleFormatter());
+            console.setLevel(Level.FINE);
+            logger.addHandler(console);
+        }
+
         Properties properties = new Properties();
         try(InputStream in = new FileInputStream(args[0])) {
             properties.load(in);
@@ -49,10 +69,12 @@ public class EventLogWatcherTest {
         String domain = properties.getProperty("domain");
         String user = properties.getProperty("user");
         String password = properties.getProperty("password");
+        String xpath = properties.getProperty("xpath");
+        if (xpath == null || xpath.isEmpty()) {
+            xpath = "*";
+        }
 
         EventLogSession session = new EventLogSession(hostname, domain, user, password);
-
-        String xpath = xpath();
         EventLogQuery query = new EventLogQuery("Security", PathType.LogName, xpath, session, false);
 
         try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::onEvents, EventLogWatcherTest::onProgress)) {
@@ -65,10 +87,6 @@ public class EventLogWatcherTest {
                 }
             }
         }
-    }
-
-    private static String xpath() {
-        return "*[System[EventID=4624 or EventID=4634]]";
     }
 
     private static String xpathFromFile() throws Exception {
@@ -84,13 +102,12 @@ public class EventLogWatcherTest {
                 exception = record.exception;
                 return;
             }
-            System.out.println(LocalTime.now() + " Received event = " + record);
-            System.out.println("\t" + record.event() + "\n");
+            LOGGER.info("Received record = " + record + " event = " + record.event());
         }
     }
 
     private static void onProgress(EventLogProgress progress) {
-        System.out.println(progress);
+        LOGGER.info(progress.toString());
     }
 
 }

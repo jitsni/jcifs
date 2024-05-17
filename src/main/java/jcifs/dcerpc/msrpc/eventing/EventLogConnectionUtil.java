@@ -68,7 +68,8 @@ public class EventLogConnectionUtil implements AutoCloseable {
     public EventLogConnectionUtil(String server, int port, String domain, String user, String password, String path) {
         this.server = server;
         session = new EventLogSession(server, port, domain, user, password);
-        String xpath = "*";
+        // our own access will come as an event
+        String xpath = "*[System[EventID=4624]]";
         EventLogQuery query = new EventLogQuery(path, EventLogQuery.PathType.LogName, xpath, session, false);
         connectionStatus = new CompletableFuture<>();
         EventCallback callback = new EventCallback(connectionStatus);

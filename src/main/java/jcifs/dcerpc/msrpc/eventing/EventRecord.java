@@ -21,6 +21,8 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /*
  * 2.2.17 Result Set in MS-EVEN6
@@ -28,6 +30,8 @@ import java.io.StringReader;
  * @author Jitendra Kotamraju
  */
 public class EventRecord {
+    private static final Logger LOGGER = Logger.getLogger(EventRecord.class.getName());
+
     public final EventLogException exception;
 
     public final int totalSize;
@@ -48,6 +52,8 @@ public class EventRecord {
         this.buf = buf;
         this.offset = offset;
         this.length = length;
+
+        printRecord();
 
         totalSize = Encdec.dec_uint32le(buf, offset);
         headerSize = Encdec.dec_uint32le(buf, offset + 4);
@@ -103,5 +109,19 @@ public class EventRecord {
     @Override
     public String toString() {
         return exception != null ? exception.toString() : "[recordId=" + recordId + " binXmlSize=" + binXmlSize + "]";
+    }
+
+    private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
+
+    private void printRecord() {
+        if (LOGGER.isLoggable(Level.FINE)) {
+            StringBuilder sb = new StringBuilder(length * 2);
+            for (int i = 0; i < length; i++) {
+                byte b = buf[offset + i];
+                sb.append(hexCode[(b >> 4) & 0xF]);
+                sb.append(hexCode[(b & 0xF)]);
+            }
+            LOGGER.fine("Record length = " + length + " " + sb);
+        }
     }
 }

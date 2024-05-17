@@ -88,6 +88,7 @@ public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
             InetSocketAddress sockaddr = new InetSocketAddress(iaddr, port);
             socket = new Socket();
             socket.connect(sockaddr, connectTimeout == -1 ? DEFAULT_CONN_TIMEOUT : connectTimeout);
+            LOGGER.info("Connected to event log server socket = " + socket);
             socket.setSoTimeout(soTimeout == -1 ? DEFAULT_SO_TIMEOUT : soTimeout);
             socket.setKeepAlive(true);
             out = socket.getOutputStream();
@@ -106,6 +107,7 @@ public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
         port = 0;
         if (socket != null) {
             try {
+                LOGGER.info("Closing event log server socket = " + socket);
                 socket.close();
             } finally {
                 socket = null;
@@ -115,6 +117,7 @@ public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
 
     @Override
     protected void doSendFragment(byte[] buf, int off, int length, boolean isDirect) throws IOException {
+        LOGGER.fine(socket + " write " + length + " bytes");
         out.write(buf, off, length);
     }
 
@@ -134,7 +137,7 @@ public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
             throw new IOException("Unexpected DCERPC PDU header");
         }
 
-        int length = Encdec.dec_uint16le(buf, 8);
+        int length = Short.toUnsignedInt(Encdec.dec_uint16le(buf, 8));
         if (length > max_recv) {
             throw new IOException("Unexpected fragment length: " + length);
         }
@@ -144,6 +147,7 @@ public class DcerpcTcpHandle extends DcerpcHandle implements AutoCloseable {
     }
 
     private void readNBytesWithCheck(byte[] b, int off, int len) throws IOException {
+        LOGGER.fine(socket + " to read " + len + " bytes");
         int count = readNBytes(b, off, len);
         if (count != len) {
             String msg = String.format("Couldn't read all expected bytes = %d, read = %d", len, count);

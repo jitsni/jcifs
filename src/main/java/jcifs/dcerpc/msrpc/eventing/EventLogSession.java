@@ -95,6 +95,7 @@ public class EventLogSession implements Closeable {
     }
 
     void establishPullConnection() throws IOException {
+        LOGGER.info("Establishing pull connection " + server + ":" + port);
         pullHandle = new DcerpcTcpHandle(server, port, "even6");
         pullHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         if (connectionTimeout != -1) {
@@ -110,6 +111,7 @@ public class EventLogSession implements Closeable {
 
     void establishWaitConnection() throws IOException {
         int port = pullHandle.getPort();
+        LOGGER.info("Establishing wait connection " + server + ":" + port);
         waitHandle = new DcerpcTcpHandle(server, port, "even6");
         waitHandle.setDcerpcSecurityProvider(new NtlmSecurityProvider(auth, encrypted));
         waitHandle.setAssocGroup(pullHandle.getAssocGroup());   // associate pull and wait connections
@@ -127,6 +129,7 @@ public class EventLogSession implements Closeable {
     @Override
     public void close() {
         try {
+            LOGGER.info("Closing session pull handle");
             if (pullHandle != null) {
                 pullHandle.close();
                 pullHandle = null;
@@ -136,6 +139,7 @@ public class EventLogSession implements Closeable {
         }
 
         try {
+            LOGGER.info("Closing session wait handle");
             if (waitHandle != null) {
                 waitHandle.close();
                 waitHandle = null;

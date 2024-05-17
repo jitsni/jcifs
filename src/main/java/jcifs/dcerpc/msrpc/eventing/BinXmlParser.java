@@ -26,6 +26,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /*
  * A recursive-descent parser for BinXml (MS-EVEN6 2.2.12)
@@ -33,6 +34,8 @@ import java.util.function.Consumer;
  * @author Jitendra Kotamraju
  */
 public class BinXmlParser {
+    private static final Logger LOGGER = Logger.getLogger(BinXmlParser.class.getName());
+
     private static final byte MORE = (byte) 0x40;
 
     private static final byte EOF = (byte) 0x00;
@@ -236,7 +239,7 @@ public class BinXmlParser {
     private int parseValueSpecEntry(Consumer<ValueEntry> entry, byte[] buf, int offset) {
         assert offset < maxOffset;
 
-        int valueByteLength = Encdec.dec_uint16le(buf, offset);
+        int valueByteLength = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset));
         ValueEntry valueEntry = new ValueEntry(valueByteLength);
         offset += 2;            // ValueByteLength
         offset = parseValueType(valueEntry::setValueType, buf, offset);
@@ -520,7 +523,7 @@ public class BinXmlParser {
         assert offset < maxOffset;
 
         offset++;               // NormalSubstitutionToken
-        short substitutionId = Encdec.dec_uint16le(buf, offset);
+        int substitutionId = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset));
         offset += 2;            // SubstitutionId
 
         BinXmlNode.Substitution substitution = new BinXmlNode.Substitution(false, substitutionId);
@@ -534,7 +537,7 @@ public class BinXmlParser {
         assert offset < maxOffset;
 
         offset++;               // OptionalSubstitutionToken
-        short substitutionId = Encdec.dec_uint16le(buf, offset);
+        int substitutionId = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset));
         offset += 2;            // SubstitutionId
 
         BinXmlNode.Substitution substitution = new BinXmlNode.Substitution(true, substitutionId);
@@ -568,7 +571,7 @@ public class BinXmlParser {
 
         offset += 2;            // NameHash
 
-        int noChars = Encdec.dec_uint16le(buf, offset);
+        int noChars = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset));
         offset += 2;            // NameNumChars
 
         offset = parseNullTerminatedUnicodeString(nameConsumer, noChars, buf, offset);
@@ -601,7 +604,7 @@ public class BinXmlParser {
     private int parseLengthPrefixedUnicodeString(Consumer<String> consumer, byte[] buf, int offset) {
         assert offset < maxOffset;
 
-        int noChars = Encdec.dec_uint16le(buf, offset);
+        int noChars = Short.toUnsignedInt(Encdec.dec_uint16le(buf, offset));
         offset += 2;            // NumUnicodeChars
         String str = unicodeString(noChars, buf, offset);
         consumer.accept(str);
