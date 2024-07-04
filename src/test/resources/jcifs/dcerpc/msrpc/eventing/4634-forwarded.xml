@@ -1,0 +1,40 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+        <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}"/>
+        <EventID>4634</EventID>
+        <Version>0</Version>
+        <Level>0</Level>
+        <Task>12545</Task>
+        <Opcode>0</Opcode>
+        <Keywords>0x8020000000000000</Keywords>
+        <TimeCreated SystemTime="2024-07-03T23:12:26.827879400Z"/>
+        <EventRecordID>305069</EventRecordID>
+        <Correlation/>
+        <Execution ProcessID="504" ThreadID="3364"/>
+        <Channel>Security</Channel>
+        <Computer>ADSERVER.nimbus.local</Computer>
+        <Security/>
+    </System>
+    <EventData>
+        <Data Name="TargetUserSid">S-1-5-21-2429710798-2921040899-3701008302-500</Data>
+        <Data Name="TargetUserName">Administrator</Data>
+        <Data Name="TargetDomainName">NIMBUS</Data>
+        <Data Name="TargetLogonId">0x7f6828b</Data>
+        <Data Name="LogonType">3</Data>
+    </EventData>
+    <RenderingInfo Culture="en-US">
+        <Message>An account was logged off. Subject: Security ID: S-1-5-21-2429710798-2921040899-3701008302-500 Account
+            Name: Administrator Account Domain: NIMBUS Logon ID: 0x7F6828B Logon Type: 3 This event is generated when a
+            logon session is destroyed. It may be positively correlated with a logon event using the Logon ID value.
+            Logon IDs are only unique between reboots on the same computer.
+        </Message>
+        <Level>Information</Level>
+        <Task>Logoff</Task>
+        <Opcode>Info</Opcode>
+        <Channel>Security</Channel>
+        <Provider>Microsoft Windows security auditing.</Provider>
+        <Keywords>
+            <Keyword>Audit Success</Keyword>
+        </Keywords>
+    </RenderingInfo>
+</Event>

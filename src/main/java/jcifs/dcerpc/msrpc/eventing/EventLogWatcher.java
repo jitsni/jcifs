@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,8 +153,8 @@ public class EventLogWatcher implements Closeable {
     }
 
     public void start() {
-        String msg = String.format("EventLogWatcher periodic polling=%s, polling fequency=%d, wait timeout=%d, pull timeout=%d, requested records=%d, xpath=%s",
-                periodicPolling, pollingFrequency, waitTimeout, pullTimeout, requestedRecords, query.query);
+        String msg = String.format("EventLogWatcher channel=%s, periodic polling=%s, polling fequency=%d, wait timeout=%d, pull timeout=%d, requested records=%d, xpath=%s",
+                query.path, periodicPolling, pollingFrequency, waitTimeout, pullTimeout, requestedRecords, query.query);
         LOGGER.info(msg);
         new Thread(this::run, "EventLogWatcher-" + threadNo.getAndIncrement()).start();
     }

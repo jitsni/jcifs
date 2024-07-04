@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,68 +98,19 @@ public class Event {
     }
 
     public static Event event(Reader reader) throws XMLStreamException {
-        int eventId = -1;
-        int version = -1;
-        int level = -1;
-        int task = -1;
-        int opcode = -1;
-        String keywords = null;
-        String timeCreated = null;
-        long eventRecordId = -1;
-        String activityId = null;
-        int processId = -1;
-        int threadId = -1;
-        String channel = null;
-        String computer = null;
-        Map<String, String> eventData = new HashMap<>();
+        Map<String, String> eventData = null;
+        SystemData systemData = null;
 
         XMLStreamReader sr = XMLStreamReaderFactory.create(reader);
         while (sr.hasNext()) {
             int eventType = sr.next();
             if (eventType == START_ELEMENT) {
                 switch (sr.getLocalName()) {
-                    case "EventID":
-                        eventId = parseIntegerText(sr);
-                        break;
-                    case "Version":
-                        version = parseIntegerText(sr);
-                        break;
-                    case "Level":
-                        level = parseIntegerText(sr);
-                        break;
-                    case "Task":
-                        task = parseIntegerText(sr);
-                        break;
-                    case "Opcode":
-                        opcode = parseIntegerText(sr);
-                        break;
-                    case "Keywords":
-                        keywords = parseStringText(sr);
-                        break;
-                    case "TimeCreated":
-                        Map<String, String> time = parseAttributes(sr);
-                        timeCreated = time.get("SystemTime");
-                        break;
-                    case "EventRecordID":
-                        eventRecordId = parseLongText(sr);
-                        break;
-                    case "Correlation":
-                        Map<String, String> correlation = parseAttributes(sr);
-                        activityId = correlation.get("ActivityID");
-                        break;
-                    case "Execution":
-                        Map<String, String> exec = parseAttributes(sr);
-                        processId = Integer.parseInt(exec.getOrDefault("ProcessID", "-1"));
-                        threadId = Integer.parseInt(exec.getOrDefault("ThreadID", "-1"));
-                        break;
-                    case "Channel":
-                        channel = parseStringText(sr);
-                        break;
-                    case "Computer":
-                        computer = parseStringText(sr);
+                    case "System":
+                        systemData = parseSystem(sr);
                         break;
                     case "EventData":
-                        if (eventId == 4624 || eventId == 4634) {
+                        if (systemData != null && (systemData.eventId == 4624 || systemData.eventId == 4634)) {
                             eventData = parseEventData(sr);
                         }
                         break;
@@ -169,19 +120,31 @@ public class Event {
             }
         }
 
+        if (systemData == null) {
+            systemData = new SystemData();
+        }
+
         Event event;
-        switch (eventId) {
+        switch (systemData.eventId) {
             case 4624:
-                event = new LogonEvent(eventId, version, level, task, opcode, keywords, timeCreated,
-                        eventRecordId, activityId, processId, threadId, channel, computer, eventData);
+                event = new LogonEvent(systemData.eventId, systemData.version, systemData.level,
+                        systemData.task, systemData.opcode, systemData.keywords, systemData.timeCreated,
+                        systemData.eventRecordId, systemData.activityId, systemData.processId,
+                        systemData.threadId, systemData.channel, systemData.computer,
+                        eventData != null ? eventData : new HashMap<>());
                 break;
             case 4634:
-                event = new LogoffEvent(eventId, version, level, task, opcode, keywords, timeCreated,
-                        eventRecordId, activityId, processId, threadId, channel, computer, eventData);
+                event = new LogoffEvent(systemData.eventId, systemData.version, systemData.level,
+                        systemData.task, systemData.opcode, systemData.keywords, systemData.timeCreated,
+                        systemData.eventRecordId, systemData.activityId, systemData.processId,
+                        systemData.threadId, systemData.channel, systemData.computer,
+                        eventData != null ? eventData : new HashMap<>());
                 break;
             default:
-                event = new Event(eventId, version, level, task, opcode, keywords, timeCreated,
-                        eventRecordId, activityId, processId, threadId, channel, computer);
+                event = new Event(systemData.eventId, systemData.version, systemData.level,
+                        systemData.task, systemData.opcode, systemData.keywords, systemData.timeCreated,
+                        systemData.eventRecordId, systemData.activityId, systemData.processId,
+                        systemData.threadId, systemData.channel, systemData.computer);
                 break;
         }
 
@@ -233,6 +196,7 @@ public class Event {
         return text;
     }
 
+    // Parses <Event><EventData>
     private static Map<String, String > parseEventData(XMLStreamReader sr) throws XMLStreamException {
         Map<String, String> eventData = new HashMap<>();
         while (sr.hasNext()) {
@@ -247,6 +211,79 @@ public class Event {
         }
         assert sr.getEventType() == END_ELEMENT;
         return eventData;
+    }
+
+    // Parses <Event><System>
+    private static SystemData parseSystem(XMLStreamReader sr) throws XMLStreamException {
+        int eventId = -1;
+        int version = -1;
+        int level = -1;
+        int task = -1;
+        int opcode = -1;
+        String keywords = null;
+        String timeCreated = null;
+        long eventRecordId = -1;
+        String activityId = null;
+        int processId = -1;
+        int threadId = -1;
+        String channel = null;
+        String computer = null;
+
+        while (sr.hasNext()) {
+            int eventType = sr.next();
+            if (eventType == START_ELEMENT) {
+                switch (sr.getLocalName()) {
+                    case "EventID":
+                        eventId = parseIntegerText(sr);
+                        break;
+                    case "Version":
+                        version = parseIntegerText(sr);
+                        break;
+                    case "Level":
+                        level = parseIntegerText(sr);
+                        break;
+                    case "Task":
+                        task = parseIntegerText(sr);
+                        break;
+                    case "Opcode":
+                        opcode = parseIntegerText(sr);
+                        break;
+                    case "Keywords":
+                        keywords = parseStringText(sr);
+                        break;
+                    case "TimeCreated":
+                        Map<String, String> time = parseAttributes(sr);
+                        timeCreated = time.get("SystemTime");
+                        break;
+                    case "EventRecordID":
+                        eventRecordId = parseLongText(sr);
+                        break;
+                    case "Correlation":
+                        Map<String, String> correlation = parseAttributes(sr);
+                        activityId = correlation.get("ActivityID");
+                        break;
+                    case "Execution":
+                        Map<String, String> exec = parseAttributes(sr);
+                        processId = Integer.parseInt(exec.getOrDefault("ProcessID", "-1"));
+                        threadId = Integer.parseInt(exec.getOrDefault("ThreadID", "-1"));
+                        break;
+                    case "Channel":
+                        channel = parseStringText(sr);
+                        break;
+                    case "Computer":
+                        computer = parseStringText(sr);
+                        break;
+                    default:
+                        break;
+                }
+            } else if (eventType == END_ELEMENT && sr.getLocalName().equals("System")) {
+                break;
+            }
+        }
+        assert sr.getEventType() == END_ELEMENT;
+        return new SystemData(eventId, version, level, task, opcode,
+            keywords, timeCreated, eventRecordId, activityId,
+            processId, threadId, channel, computer);
     }
 
     private static abstract class XMLStreamReaderFactory {
@@ -299,6 +336,45 @@ public class Event {
             XMLStreamReader doCreate(Reader reader) throws XMLStreamException {
                 return xif.createXMLStreamReader(reader);
             }
+        }
+    }
+
+    // Class for <Event><System>
+    static class SystemData {
+        final int eventId;
+        final int version;
+        final int level;
+        final int task;
+        final int opcode;
+        final String keywords;
+        final String timeCreated;
+        final long eventRecordId;
+        final String activityId;
+        final int processId;
+        final int threadId;
+        final String channel;
+        final String computer;
+
+        SystemData() {
+            this(-1, -1, -1, -1, -1, null, null, -1L, null, -1, -1, null, null);
+        }
+
+        SystemData(int eventId, int version, int level, int task, int opcode,
+                   String keywords, String timeCreated, long eventRecordId, String activityId,
+                   int processId, int threadId, String channel, String computer) {
+            this.eventId = eventId;
+            this.version = version;
+            this.level = level;
+            this.task = task;
+            this.opcode = opcode;
+            this.keywords = keywords;
+            this.timeCreated = timeCreated;
+            this.eventRecordId = eventRecordId;
+            this.activityId = activityId;
+            this.processId = processId;
+            this.threadId = threadId;
+            this.channel = channel;
+            this.computer = computer;
         }
     }
 

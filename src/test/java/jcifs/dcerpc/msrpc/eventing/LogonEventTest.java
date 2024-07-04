@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,6 +76,46 @@ public class LogonEventTest {
             assertEquals("%%1843", event.virtualAccount);
             assertEquals("0x0", event.targetLinkedLogonId);
             assertEquals("%%1842", event.elevatedToken);
+        }
+    }
+
+    @Test
+    public void logonEventForwarded() throws Exception {
+        try(Reader reader = new InputStreamReader(getClass().getResourceAsStream("4624-forwarded.xml"), UTF_8)) {
+            LogonEvent event = (LogonEvent) Event.event(reader);
+            assertEquals(4624, event.eventId);
+            assertEquals(1, event.version);
+            assertEquals(0, event.level);
+            assertEquals(12544, event.task);
+            assertEquals(0, event.opcode);
+            assertEquals("0x8020000000000000", event.keywords);
+            assertEquals("2024-07-04T06:08:51.681644400Z", event.timeCreated);
+            assertEquals(305041, event.eventRecordId);
+            assertEquals(504, event.processId);
+            assertEquals(2816, event.threadId);
+            assertEquals("Security", event.channel);
+            assertEquals("ADSERVER.nimbus.local", event.computer);
+
+            assertEquals("S-1-0-0", event.subjectUserSid);
+            assertEquals("-", event.subjectUserName);
+            assertEquals("-", event.subjectDomainName);
+            assertEquals("0x0", event.subjectLogonId);
+            assertEquals("S-1-5-18", event.targetUserSid);
+            assertEquals("ADSERVER$", event.targetUserName);
+            assertEquals("NIMBUS", event.targetDomainName);
+            assertEquals("0x7f6a6a4", event.targetLogonId);
+            assertEquals(3, event.logonType);
+            assertEquals("Kerberos", event.logonProcessName);
+            assertEquals("Kerberos", event.authenticationPackageName);
+            assertEquals("-", event.workstationName);
+            assertEquals("{8DF5AC95-5B93-F823-C32B-5728D8A360B8}", event.logonGuid);
+            assertEquals("-", event.transmittedServices);
+            assertEquals("-", event.lmPackageName);
+            assertEquals("0", event.keyLength);
+            assertEquals("0x0", event.logonProcessId);
+            assertEquals("-", event.processName);
+            assertEquals("10.83.41.71", event.ipAddress);
+            assertEquals(52698, event.ipPort);
         }
     }
 }

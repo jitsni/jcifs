@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -278,6 +278,47 @@ public class even6 {
 
         @Override
         public void decode_out(NdrBuffer _src) throws NdrException {
+            retVal = _src.dec_ndr_long();
+        }
+    }
+
+    // 3.1.4.20 EvtRpcGetChannelList (Opnum 19)
+    public static class EvtRpcGetChannelList extends DcerpcMessage {
+        public int retVal = -1;
+        public int numChannelPaths;
+        public String[] channelList;
+        public RpcInfo error;
+
+        public EvtRpcGetChannelList() {
+            this.ptype = 0;
+        }
+
+        @Override
+        public int getOpnum() { return 19; }
+
+        public void encode_in(NdrBuffer _dst) throws NdrException {
+            _dst.enc_ndr_long(0);
+        }
+
+        @Override
+        public void decode_out(NdrBuffer _src) throws NdrException {
+            numChannelPaths = _src.dec_ndr_long();
+            int pointer = _src.dec_ndr_long();           // pointer
+
+            if (pointer != 0) {
+                _src.dec_ndr_long();       // max count or numChannelPaths
+                channelList = new String[numChannelPaths];
+
+                _src.advance(numChannelPaths*4);                // advance the pointers
+                for (int i = 0; i < channelList.length; i++) {
+                    _src.dec_ndr_long();             // maxCount
+                    _src.dec_ndr_long();               // offset
+                    _src.dec_ndr_long();          // actualCount
+                    channelList[i] = _src.dec_ndr_unistring();
+                    System.out.println(channelList[i]);
+                }
+            }
+
             retVal = _src.dec_ndr_long();
         }
     }

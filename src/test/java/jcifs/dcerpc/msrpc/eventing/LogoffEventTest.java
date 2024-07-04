@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,31 @@ public class LogoffEventTest {
             assertEquals("Window Manager", event.targetDomainName);
             assertEquals("0x1a0992", event.targetLogonId);
             assertEquals(2, event.logonType);
+        }
+    }
+
+    @Test
+    public void logoffEventForwarded() throws Exception {
+        try(Reader reader = new InputStreamReader(getClass().getResourceAsStream("4634-forwarded.xml"), UTF_8)) {
+            LogoffEvent event = (LogoffEvent) Event.event(reader);
+            assertEquals(4634, event.eventId);
+            assertEquals(0, event.version);
+            assertEquals(0, event.level);
+            assertEquals(12545, event.task);
+            assertEquals(0, event.opcode);
+            assertEquals("0x8020000000000000", event.keywords);
+            assertEquals("2024-07-03T23:12:26.827879400Z", event.timeCreated);
+            assertEquals(305069, event.eventRecordId);
+            assertEquals(504, event.processId);
+            assertEquals(3364, event.threadId);
+            assertEquals("Security", event.channel);
+            assertEquals("ADSERVER.nimbus.local", event.computer);
+
+            assertEquals("S-1-5-21-2429710798-2921040899-3701008302-500", event.targetUserSid);
+            assertEquals("Administrator", event.targetUserName);
+            assertEquals("NIMBUS", event.targetDomainName);
+            assertEquals("0x7f6828b", event.targetLogonId);
+            assertEquals(3, event.logonType);
         }
     }
 }

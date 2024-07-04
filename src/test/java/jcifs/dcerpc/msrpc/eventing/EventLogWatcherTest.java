@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Jitendra Kotamraju.
+ * Copyright 2020-2024 Jitendra Kotamraju.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,12 +70,16 @@ public class EventLogWatcherTest {
         String user = properties.getProperty("user");
         String password = properties.getProperty("password");
         String xpath = properties.getProperty("xpath");
+        String channel = properties.getProperty("channel");
+        if (channel == null || channel.isEmpty()) {
+            channel = "Security";
+        }
         if (xpath == null || xpath.isEmpty()) {
             xpath = "*";
         }
 
         EventLogSession session = new EventLogSession(hostname, domain, user, password);
-        EventLogQuery query = new EventLogQuery("Security", PathType.LogName, xpath, session, false);
+        EventLogQuery query = new EventLogQuery(channel, PathType.LogName, xpath, session, false);
 
         try(EventLogWatcher watcher = new EventLogWatcher(query, EventLogWatcherTest::onEvents, EventLogWatcherTest::onProgress)) {
             watcher.start();
