@@ -47,7 +47,7 @@ public class EventLogConnectionUtil implements AutoCloseable {
         public final String errorMsg;
         public final Exception ex;
 
-        private ConnectionStatus(Status status, String errorMsg, Exception ex) {
+        public ConnectionStatus(Status status, String errorMsg, Exception ex) {
             this.status = status;
             this.errorMsg = errorMsg;
             this.ex = ex;
@@ -64,9 +64,11 @@ public class EventLogConnectionUtil implements AutoCloseable {
     private final CompletableFuture<ConnectionStatus> connectionStatus;
     private final EventLogSession session;
     private final String server;
+    private final int port;
 
     public EventLogConnectionUtil(String server, int port, String domain, String user, String password, String path) {
         this.server = server;
+        this.port = port;
         session = new EventLogSession(server, port, domain, user, password);
         // our own access will come as an event
         String xpath = "*[System[EventID=4624]]";
@@ -98,25 +100,26 @@ public class EventLogConnectionUtil implements AutoCloseable {
 
     public ConnectionStatus testConnection(long timeout, TimeUnit unit) {
         ConnectionStatus status;
+        String errMsg = String.format("Connection to %s:%d failed", server, port == -1 ? 135 : port);
 
         try {
             watcher.start();
             status = connectionStatus.get(timeout, unit);
         } catch (TimeoutException e) {
-            status = new ConnectionStatus(Status.ERROR, "Timed out", e);
+            status = new ConnectionStatus(Status.ERROR, errMsg + ", Timed out", e);
         } catch (Exception e) {
-            LOGGER.log(Level.INFO, e, () -> "Error connecting to server: " + server);
-            status = new ConnectionStatus(Status.ERROR, "Unknown error", e);
+            LOGGER.log(Level.INFO, e, () -> errMsg);
+            status = new ConnectionStatus(Status.ERROR, errMsg + ", Unknown error", e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof EventLogException) {
                     if (e.getCause().getCause() instanceof IOException) {
-                        status = new ConnectionStatus(Status.ERROR, "I/O error", e);
+                        status = new ConnectionStatus(Status.ERROR, errMsg + ", I/O error", e);
 
                         if (e.getCause().getCause() instanceof DcerpcException) {
                             DcerpcException dce = (DcerpcException) e.getCause().getCause();
                             if (dce.getErrorCode() == DCERPC_FAULT_ACCESS_DENIED) {
-                                status = new ConnectionStatus(Status.ERROR, "Access denied", e);
+                                status = new ConnectionStatus(Status.ERROR, errMsg + ", Access denied", e);
                             }
                         }
                     }
